@@ -233,7 +233,7 @@ def _c_str(val):
 
 styled = (
     display_df.style
-    .applymap(_c_str, subset=['Sell_Through_%'])
+    .map(_c_str, subset=['Sell_Through_%'])
     .format({
         'Somma Q.tà Acquistata': '{:.0f}',
         'Somma Q.tà Venduta': '{:.0f}',
