@@ -1,0 +1,81 @@
+/* Import Google Fonts - Inter */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Sfondo della pagina e font principale */
+.stApp {
+    background-color: #f8fafc; /* Tailwind slate-50 */
+    font-family: 'Inter', sans-serif !important;
+}
+
+/* Nascondere hamburger menu e footer per look minimale */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+
+/* Spazio superiore ridotto (per nascondere il padding default di Streamlit) */
+.css-18e3th9 {
+    padding-top: 2rem;
+}
+
+/* Stile per i container (Bento-grid) */
+div[data-testid="stVerticalBlock"] > div > div[data-testid="stVerticalBlock"] {
+    background-color: #ffffff;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); /* Tailwind shadow-md soft */
+    border: 1px solid #f1f5f9; /* Tailwind slate-100 */
+}
+
+/* Titoli */
+h1, h2, h3 {
+    font-family: 'Inter', sans-serif !important;
+    color: #0f172a; /* Tailwind slate-900 */
+    font-weight: 600 !important;
+    letter-spacing: -0.025em;
+}
+
+/* Sub-text e label */
+label {
+    font-weight: 500 !important;
+    color: #475569 !important; /* Tailwind slate-600 */
+    font-size: 0.875rem !important; /* text-sm */
+}
+
+/* Stile Sidebar (Filtri) */
+[data-testid="stSidebar"] {
+    background-color: #ffffff;
+    border-right: 1px solid #e2e8f0; /* Tailwind slate-200 */
+}
+
+/* Bottoni (Tags style) */
+.stButton > button {
+    border-radius: 9999px !important; /* pill shape */
+    background-color: #f1f5f9;
+    color: #0f172a;
+    border: 1px solid #e2e8f0;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.stButton > button:hover {
+    background-color: #e2e8f0;
+    border-color: #cbd5e1;
+}
+
+/* Stile delle metriche */
+[data-testid="stMetricValue"] {
+    color: #0f172a;
+    font-weight: 700 !important;
+}
+
+[data-testid="stMetricLabel"] {
+    color: #64748b !important;
+    font-weight: 500 !important;
+}
+
+/* Tabella dati */
+[data-testid="stDataFrame"] {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+}

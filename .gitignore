@@ -1,0 +1,17 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Streamlit config (optional to ignore, but usually kept if customized)
+#.streamlit/
+
+# OS specific files
+.DS_Store
+Thumbs.db
