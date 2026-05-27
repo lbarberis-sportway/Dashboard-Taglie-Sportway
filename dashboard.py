@@ -211,6 +211,33 @@ with col_g2:
     fig_line.update_xaxes(type='category', title_text='')
     st.plotly_chart(fig_line, use_container_width=True)
 
+# --- SEZIONE 2.5: VENDITE PER NEGOZIO ---
+st.markdown("<hr style='margin-top: 0; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
+st.subheader("Vendite per Negozio")
+
+negozi_agg = df_vend.groupby('Negozio')['Qta_Venduta'].sum().reset_index()
+negozi_agg = negozi_agg.sort_values('Qta_Venduta', ascending=True)
+
+fig_negozi = go.Figure()
+fig_negozi.add_trace(go.Bar(
+    x=negozi_agg['Qta_Venduta'],
+    y=negozi_agg['Negozio'],
+    orientation='h',
+    marker_color=COLOR_VEND,
+    name='Venduto'
+))
+
+fig_negozi.update_layout(
+    plot_bgcolor='rgba(0,0,0,0)',
+    paper_bgcolor='rgba(0,0,0,0)',
+    margin=dict(l=20, r=20, t=20, b=20),
+    font=dict(family="Inter, sans-serif", color="#475569")
+)
+fig_negozi.update_yaxes(gridcolor='#f1f5f9')
+fig_negozi.update_xaxes(title='Quantità Venduta', gridcolor='#f1f5f9')
+
+st.plotly_chart(fig_negozi, use_container_width=True)
+
 # --- SEZIONE 3: MATRICE DATI AVANZATA ---
 st.subheader("Matrice Dati Dettagliata")
 st.markdown("Esplora i dati per Stagione e Taglia. Clicca sulle intestazioni per ordinare.")
@@ -243,6 +270,39 @@ styled = (
 
 st.dataframe(
     styled,
+    use_container_width=True,
+    height=400
+)
+
+# --- SEZIONE 4: MATRICE PRODUTTORI ---
+st.markdown("<hr style='margin-top: 2rem; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
+st.subheader("Matrice Produttori")
+st.markdown("Esplora i dati per Produttore.")
+
+agg_acq_prod = df_acq.groupby('Produttore')['Qta_Acquistata'].sum().reset_index()
+agg_vend_prod = df_vend.groupby('Produttore')['Qta_Venduta'].sum().reset_index()
+prod_merged = pd.merge(agg_acq_prod, agg_vend_prod, on='Produttore', how='outer').fillna(0)
+prod_merged['Sell_Through_%'] = (prod_merged['Qta_Venduta'] / prod_merged['Qta_Acquistata']) * 100
+prod_merged['Sell_Through_%'] = prod_merged['Sell_Through_%'].replace([float('inf'), -float('inf')], 0).fillna(0)
+prod_merged = prod_merged.sort_values('Qta_Acquistata', ascending=False).reset_index(drop=True)
+
+prod_display = prod_merged.rename(columns={
+    'Qta_Acquistata': 'Somma Q.tà Acquistata',
+    'Qta_Venduta': 'Somma Q.tà Venduta'
+})
+
+prod_styled = (
+    prod_display.style
+    .map(_c_str, subset=['Sell_Through_%'])
+    .format({
+        'Somma Q.tà Acquistata': '{:.0f}',
+        'Somma Q.tà Venduta': '{:.0f}',
+        'Sell_Through_%': '{:.1f}%'
+    })
+)
+
+st.dataframe(
+    prod_styled,
     use_container_width=True,
     height=400
 )
