@@ -15,19 +15,6 @@ if 'df_vend_raw' not in st.session_state:
     st.session_state.df_acq_raw = None
     st.session_state.file_name = None
 
-# Caricamento automatico da URL query parameter all'avvio se disponibile
-if st.session_state.df_vend_raw is None and "file" in st.query_params:
-    query_file = st.query_params["file"]
-    files_disponibili = list_excel_files()
-    if query_file in files_disponibili:
-        try:
-            df_vend_raw, df_acq_raw = load_data(f"Dati Excel/{query_file}")
-            st.session_state.df_vend_raw = df_vend_raw
-            st.session_state.df_acq_raw = df_acq_raw
-            st.session_state.file_name = query_file
-        except Exception as e:
-            st.error(f"Errore nel caricamento automatico del file da URL '{query_file}': {e}")
-
 if st.session_state.df_vend_raw is None:
     st.title("Esplorazione Dati Taglie")
     st.markdown("Carica un file Excel per iniziare l'analisi.")
@@ -78,73 +65,30 @@ filter_opts = get_filter_options(df_vend_raw, df_acq_raw)
 # LAYOUT PRINCIPALE (Bento-Grid)
 # ==========================================
 st.title("Esplorazione Dati Taglie")
-
-is_local_file = st.session_state.file_name not in list_excel_files()
-
-col_title, col_share, col_new = st.columns([5, 1, 1])
+col_title, col_new = st.columns([6, 1])
 with col_title:
     st.markdown("Analisi incrociata di Acquisti e Vendite per ottimizzare lo stock.")
     st.caption(f"File: {st.session_state.file_name}")
-
-with col_share:
-    # Margine superiore per allineamento perfetto con il bottone Streamlit
-    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-    if is_local_file:
-        st.markdown("""
-            <button onclick="alert('⚠️ Analisi non condivisibile via link:\\n\\nStai usando un file locale temporaneo.\\nPer poter condividere questa analisi tramite link, sposta il file Excel nella cartella \\'Dati Excel\\' del tuo repository GitHub.');" 
-                    style="width: 100%; height: 38px; background-color: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0; border-radius: 9999px; cursor: pointer; font-weight: 500; font-family: 'Inter', sans-serif; font-size: 0.875rem; transition: all 0.2s ease;"
-                    onmouseover="this.style.backgroundColor='#fffbeb'; this.style.borderColor='#fde68a'; this.style.color='#b45309';" 
-                    onmouseout="this.style.backgroundColor='#f1f5f9'; this.style.borderColor='#e2e8f0'; this.style.color='#94a3b8';">
-                Condividi
-            </button>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown("""
-            <button onclick="navigator.clipboard.writeText(window.location.href); alert('🔗 Link dell\\'analisi copiato negli appunti!\\n\\nPuoi girarlo direttamente a colleghi o clienti.');" 
-                    style="width: 100%; height: 38px; background-color: #f1f5f9; color: #0f172a; border: 1px solid #e2e8f0; border-radius: 9999px; cursor: pointer; font-weight: 500; font-family: 'Inter', sans-serif; font-size: 0.875rem; transition: all 0.2s ease;"
-                    onmouseover="this.style.backgroundColor='#e2f8e9'; this.style.borderColor='#a7f3d0'; this.style.color='#16a34a';" 
-                    onmouseout="this.style.backgroundColor='#f1f5f9'; this.style.borderColor='#e2e8f0'; this.style.color='#0f172a';">
-                Condividi
-            </button>
-        """, unsafe_allow_html=True)
-
 with col_new:
-    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
     if st.button("← Nuova Analisi", use_container_width=True):
         st.session_state.df_vend_raw = None
         st.session_state.df_acq_raw = None
         st.session_state.file_name = None
-        st.query_params.clear()
         st.rerun()
 
 # 3. Filtri Fissi Superiori
 st.markdown("### Filtri Ricerca")
-
-# Recupera filtri da query parameters per pre-popolare i widget
-q_linee = st.query_params.get_all("linea")
-q_cat = st.query_params.get_all("categoria")
-q_stag = st.query_params.get_all("stagione")
-q_taglie = st.query_params.get_all("taglia")
-q_prod = st.query_params.get_all("produttore")
-
-# Filtra solo i valori validi/esistenti
-default_linee = [x for x in q_linee if x in filter_opts.get('Linea', [])]
-default_cat = [x for x in q_cat if x in filter_opts.get('Categoria', [])]
-default_stag = [x for x in q_stag if x in filter_opts.get('Stagione', [])]
-default_taglie = [x for x in q_taglie if x in filter_opts.get('Taglia', [])]
-default_prod = [x for x in q_prod if x in filter_opts.get('Produttore', [])]
-
 f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns(5)
 with f_col1:
-    selected_linee = st.multiselect("Linea", filter_opts.get('Linea', []), default=default_linee, placeholder="Tutte le Linee")
+    selected_linee = st.multiselect("Linea", filter_opts.get('Linea', []), placeholder="Tutte le Linee")
 with f_col2:
-    selected_cat = st.multiselect("Categoria", filter_opts.get('Categoria', []), default=default_cat, placeholder="Tutte le Categorie")
+    selected_cat = st.multiselect("Categoria", filter_opts.get('Categoria', []), placeholder="Tutte le Categorie")
 with f_col3:
-    selected_stag = st.multiselect("Stagione", filter_opts.get('Stagione', []), default=default_stag, placeholder="Tutte le Stagioni")
+    selected_stag = st.multiselect("Stagione", filter_opts.get('Stagione', []), placeholder="Tutte le Stagioni")
 with f_col4:
-    selected_taglie = st.multiselect("Taglia", filter_opts.get('Taglia', []), default=default_taglie, placeholder="Tutte le Taglie")
+    selected_taglie = st.multiselect("Taglia", filter_opts.get('Taglia', []), placeholder="Tutte le Taglie")
 with f_col5:
-    selected_prod = st.multiselect("Produttore", filter_opts.get('Produttore', []), default=default_prod, placeholder="Tutti i Produttori")
+    selected_prod = st.multiselect("Produttore", filter_opts.get('Produttore', []), placeholder="Tutti i Produttori")
 
 st.markdown("<hr style='margin-top: 0; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
 
@@ -168,27 +112,19 @@ min_d = date_ref['Data'].min().strftime('%d/%m/%Y')
 max_d = date_ref['Data'].max().strftime('%d/%m/%Y')
 st.caption(f"Periodo disponibile: {min_d} → {max_d}")
 
-# Recupera filtri temporali da query parameters per pre-popolare i widget
-q_year = st.query_params.get("year", "Tutti")
-q_quarter = st.query_params.get("quarter", "Tutti")
-q_month = st.query_params.get("month", "Tutti")
-q_day = st.query_params.get("day", "Tutti")
-
 d_col1, d_col2, d_col3, d_col4 = st.columns(4)
 
 with d_col1:
     years, _, _, _ = get_date_options(date_ref)
     year_opts = ["Tutti"] + [str(int(y)) for y in years]
-    default_year_idx = year_opts.index(q_year) if q_year in year_opts else 0
-    sel_year = st.selectbox("Anno", year_opts, index=default_year_idx, key="year_filter")
+    sel_year = st.selectbox("Anno", year_opts, key="year_filter")
 
 year_val = int(sel_year) if sel_year != "Tutti" else None
 
 with d_col2:
     _, q_avail, _, _ = get_date_options(date_ref, year=year_val)
     q_opts = ["Tutti"] + [f"Q{int(q)}" for q in q_avail]
-    default_q_idx = q_opts.index(q_quarter) if q_quarter in q_opts else 0
-    sel_quarter = st.selectbox("Trimestre", q_opts, index=default_q_idx, key="quarter_filter")
+    sel_quarter = st.selectbox("Trimestre", q_opts, key="quarter_filter")
 
 quarter_val = int(sel_quarter[1]) if sel_quarter != "Tutti" else None
 
@@ -197,43 +133,19 @@ with d_col3:
     mesi = {1:"Gen",2:"Feb",3:"Mar",4:"Apr",5:"Mag",6:"Giu",
             7:"Lug",8:"Ago",9:"Set",10:"Ott",11:"Nov",12:"Dic"}
     m_opts = ["Tutti"] + [f"{int(m)} - {mesi[m]}" for m in m_avail]
-    
-    # Trova il corretto indice del mese confrontando il numero iniziale
-    default_m_idx = 0
-    for idx, opt in enumerate(m_opts):
-        if opt == q_month or opt.split(" - ")[0] == q_month.split(" - ")[0]:
-            default_m_idx = idx
-            break
-            
-    sel_month = st.selectbox("Mese", m_opts, index=default_m_idx, key="month_filter")
+    sel_month = st.selectbox("Mese", m_opts, key="month_filter")
 
 month_val = int(sel_month.split(" - ")[0]) if sel_month != "Tutti" else None
 
 with d_col4:
     _, _, _, d_avail = get_date_options(date_ref, year=year_val, quarter=quarter_val, month=month_val)
     d_opts = ["Tutti"] + [str(int(d)) for d in d_avail]
-    default_d_idx = d_opts.index(q_day) if q_day in d_opts else 0
-    sel_day = st.selectbox("Giorno", d_opts, index=default_d_idx, key="day_filter")
+    sel_day = st.selectbox("Giorno", d_opts, key="day_filter")
 
 day_val = int(sel_day) if sel_day != "Tutti" else None
 
 df_vend = filter_by_date(df_vend, year=year_val, quarter=quarter_val, month=month_val, day=day_val)
 df_acq = filter_by_date(df_acq, year=year_val, quarter=quarter_val, month=month_val, day=day_val)
-
-# Sincronizza i query parameters con le selezioni correnti (solo per file condivisi)
-if not is_local_file:
-    st.query_params["file"] = st.session_state.file_name or ""
-    st.query_params["linea"] = selected_linee
-    st.query_params["categoria"] = selected_cat
-    st.query_params["stagione"] = selected_stag
-    st.query_params["taglia"] = selected_taglie
-    st.query_params["produttore"] = selected_prod
-    st.query_params["year"] = sel_year
-    st.query_params["quarter"] = sel_quarter
-    st.query_params["month"] = sel_month
-    st.query_params["day"] = sel_day
-else:
-    st.query_params.clear()
 
 st.markdown("<hr style='margin-top: 0; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
 
