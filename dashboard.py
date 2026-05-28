@@ -87,26 +87,28 @@ with col_title:
     st.caption(f"File: {st.session_state.file_name}")
 
 with col_share:
-    # Aggiungiamo un piccolo margine superiore per allineamento verticale ottimale
+    # Margine superiore per allineamento perfetto con il bottone Streamlit
     st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
     if is_local_file:
         st.markdown("""
-            <button onclick="alert('⚠️ Analisi non condivisibile via link:\\n\\nStai usando un file locale temporaneo.\\nPer poter condividere questa analisi tramite link, sposta il file Excel nella cartella \\'Dati Excel\\' del tuo repository GitHub su cui gira l\\'app online.');" 
-                    style="width: 100%; height: 38px; background-color: #f3f4f6; color: #9ca3af; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer; font-weight: 500; font-family: inherit; font-size: 0.85rem; transition: all 0.2s;">
-                🔗 Condividi
+            <button onclick="alert('⚠️ Analisi non condivisibile via link:\\n\\nStai usando un file locale temporaneo.\\nPer poter condividere questa analisi tramite link, sposta il file Excel nella cartella \\'Dati Excel\\' del tuo repository GitHub.');" 
+                    style="width: 100%; height: 38px; background-color: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0; border-radius: 9999px; cursor: pointer; font-weight: 500; font-family: 'Inter', sans-serif; font-size: 0.875rem; transition: all 0.2s ease;"
+                    onmouseover="this.style.backgroundColor='#fffbeb'; this.style.borderColor='#fde68a'; this.style.color='#b45309';" 
+                    onmouseout="this.style.backgroundColor='#f1f5f9'; this.style.borderColor='#e2e8f0'; this.style.color='#94a3b8';">
+                Condividi
             </button>
         """, unsafe_allow_html=True)
     else:
         st.markdown("""
             <button onclick="navigator.clipboard.writeText(window.location.href); alert('🔗 Link dell\\'analisi copiato negli appunti!\\n\\nPuoi girarlo direttamente a colleghi o clienti.');" 
-                    style="width: 100%; height: 38px; background-color: #16a34a; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-family: inherit; font-size: 0.85rem; transition: background-color 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
-                    onmouseover="this.style.backgroundColor='#15803d'" onmouseout="this.style.backgroundColor='#16a34a'">
-                🔗 Condividi
+                    style="width: 100%; height: 38px; background-color: #f1f5f9; color: #0f172a; border: 1px solid #e2e8f0; border-radius: 9999px; cursor: pointer; font-weight: 500; font-family: 'Inter', sans-serif; font-size: 0.875rem; transition: all 0.2s ease;"
+                    onmouseover="this.style.backgroundColor='#e2f8e9'; this.style.borderColor='#a7f3d0'; this.style.color='#16a34a';" 
+                    onmouseout="this.style.backgroundColor='#f1f5f9'; this.style.borderColor='#e2e8f0'; this.style.color='#0f172a';">
+                Condividi
             </button>
         """, unsafe_allow_html=True)
 
 with col_new:
-    # Aggiungiamo lo stesso margine superiore per allineare i due bottoni
     st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
     if st.button("← Nuova Analisi", use_container_width=True):
         st.session_state.df_vend_raw = None
