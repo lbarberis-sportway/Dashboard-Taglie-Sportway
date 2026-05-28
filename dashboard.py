@@ -16,7 +16,7 @@ if 'df_vend_raw' not in st.session_state:
     st.session_state.file_name = None
 
 if st.session_state.df_vend_raw is None:
-    st.title("Esplorazione Dati Taglie")
+    st.title("Sportway Analisi Dati")
     st.markdown("Carica un file Excel per iniziare l'analisi.")
 
     col_up1, col_up2 = st.columns(2)
