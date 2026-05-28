@@ -78,44 +78,42 @@ filter_opts = get_filter_options(df_vend_raw, df_acq_raw)
 # LAYOUT PRINCIPALE (Bento-Grid)
 # ==========================================
 st.title("Esplorazione Dati Taglie")
-col_title, col_new = st.columns([6, 1])
+
+is_local_file = st.session_state.file_name not in list_excel_files()
+
+col_title, col_share, col_new = st.columns([5, 1, 1])
 with col_title:
     st.markdown("Analisi incrociata di Acquisti e Vendite per ottimizzare lo stock.")
     st.caption(f"File: {st.session_state.file_name}")
+
+with col_share:
+    # Aggiungiamo un piccolo margine superiore per allineamento verticale ottimale
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+    if is_local_file:
+        st.markdown("""
+            <button onclick="alert('⚠️ Analisi non condivisibile via link:\\n\\nStai usando un file locale temporaneo.\\nPer poter condividere questa analisi tramite link, sposta il file Excel nella cartella \\'Dati Excel\\' del tuo repository GitHub su cui gira l\\'app online.');" 
+                    style="width: 100%; height: 38px; background-color: #f3f4f6; color: #9ca3af; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer; font-weight: 500; font-family: inherit; font-size: 0.85rem; transition: all 0.2s;">
+                🔗 Condividi
+            </button>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+            <button onclick="navigator.clipboard.writeText(window.location.href); alert('🔗 Link dell\\'analisi copiato negli appunti!\\n\\nPuoi girarlo direttamente a colleghi o clienti.');" 
+                    style="width: 100%; height: 38px; background-color: #16a34a; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-family: inherit; font-size: 0.85rem; transition: background-color 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
+                    onmouseover="this.style.backgroundColor='#15803d'" onmouseout="this.style.backgroundColor='#16a34a'">
+                🔗 Condividi
+            </button>
+        """, unsafe_allow_html=True)
+
 with col_new:
+    # Aggiungiamo lo stesso margine superiore per allineare i due bottoni
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
     if st.button("← Nuova Analisi", use_container_width=True):
         st.session_state.df_vend_raw = None
         st.session_state.df_acq_raw = None
         st.session_state.file_name = None
         st.query_params.clear()
         st.rerun()
-
-# --- SEZIONE PREMIUM DI CONDIVISIONE ---
-is_local_file = st.session_state.file_name not in list_excel_files()
-
-if is_local_file:
-    st.markdown("""
-        <div style="background-color: #fffbeb; border: 1px solid #fde68a; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
-            <p style="margin: 0; font-size: 0.9rem; color: #b45309; display: flex; align-items: center; gap: 0.5rem;">
-                <span>⚠️</span> <strong>Analisi non condivisibile via link:</strong> Stai analizzando un file locale caricato temporaneamente. Per poter condividere questa analisi pronta tramite link, copia questo file Excel nella cartella <code>Dati Excel/</code> del tuo repository GitHub e fai il deploy.
-            </p>
-        </div>
-    """, unsafe_allow_html=True)
-else:
-    st.markdown("""
-        <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
-            <h4 style="margin: 0 0 0.25rem 0; color: #166534; display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem;">
-                <span>🔗</span> Condivisione Analisi Attiva
-            </h4>
-            <p style="margin: 0 0 0.50rem 0; font-size: 0.85rem; color: #15803d;">
-                L'URL della barra degli indirizzi si aggiorna automaticamente mentre filtri i dati. Copialo direttamente o clicca il pulsante qui sotto per copiarlo negli appunti.
-            </p>
-            <button onclick="navigator.clipboard.writeText(window.location.href); alert('Link dell\'analisi copiato negli appunti!');" 
-                    style="background-color: #16a34a; color: white; border: none; padding: 0.35rem 0.8rem; border-radius: 6px; cursor: pointer; font-weight: 500; font-family: inherit; font-size: 0.8rem; transition: background-color 0.2s;">
-                Copia Link Analisi
-            </button>
-        </div>
-    """, unsafe_allow_html=True)
 
 # 3. Filtri Fissi Superiori
 st.markdown("### Filtri Ricerca")
