@@ -227,7 +227,7 @@ prod_chart = prod_chart.sort_values('Qta_Acquistata', ascending=False).head(15).
 col_cp1, col_cp2 = st.columns(2)
 
 with col_cp1:
-    st.subheader("Andamento per Categoria (Barre)")
+    st.subheader("Andamento per Categoria")
 
     fig_cat_bar = go.Figure()
     fig_cat_bar.add_trace(go.Bar(
@@ -253,7 +253,7 @@ with col_cp1:
     st.plotly_chart(fig_cat_bar, use_container_width=True)
 
 with col_cp2:
-    st.subheader("Andamento per Produttore (Barre)")
+    st.subheader("Andamento per Produttore")
 
     fig_prod_bar = go.Figure()
     fig_prod_bar.add_trace(go.Bar(
