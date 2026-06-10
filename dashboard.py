@@ -4,7 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from data_engine import load_data, get_filter_options, filter_dataframe, merge_and_aggregate, get_date_reference, get_date_options, filter_by_date, list_excel_files
 
-st.set_page_config(page_title="Analisi Taglie | Dashboard", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Analisi Taglie | Dashboard", page_icon="logo.png", layout="wide", initial_sidebar_state="collapsed")
 
 with open("style.css", "r") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
