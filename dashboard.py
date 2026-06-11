@@ -169,19 +169,25 @@ with col4:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- SEZIONE 2: GRAFICI REATTIVI ---
-# Colori stile Perplexity (blu notte, slate, accenti chiari)
 COLOR_ACQ = "#3b82f6" # Blu 500
 COLOR_VEND = "#f59e0b" # Ambra 500
 
-col_g1, col_g2 = st.columns(2)
+# --- SEZIONE 2.5: CATEGORIA E TAGLIE ---
+st.markdown("<hr style='margin-top: 0; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
 
-with col_g1:
+cat_vend = df_vend.groupby('Categoria')['Qta_Venduta'].sum().reset_index()
+cat_acq = df_acq.groupby('Categoria')['Qta_Acquistata'].sum().reset_index()
+cat_agg = pd.merge(cat_acq, cat_vend, on='Categoria', how='outer').fillna(0)
+cat_agg = cat_agg.sort_values('Qta_Venduta', ascending=False)
+
+col_left, col_right = st.columns(2)
+
+with col_left:
     st.subheader("Andamento per Taglia")
     fig_bar = go.Figure()
     fig_bar.add_trace(go.Bar(x=df_tot['Taglia'], y=df_tot['Qta_Acquistata'], name='Acquistato', marker_color=COLOR_ACQ))
     fig_bar.add_trace(go.Bar(x=df_tot['Taglia'], y=df_tot['Qta_Venduta'], name='Venduto', marker_color=COLOR_VEND))
-    
+
     fig_bar.update_layout(
         barmode='group',
         plot_bgcolor='rgba(0,0,0,0)',
@@ -194,39 +200,7 @@ with col_g1:
     fig_bar.update_xaxes(type='category', title_text='')
     st.plotly_chart(fig_bar, use_container_width=True)
 
-with col_g2:
-    st.subheader("Trend Sell-Through per Taglie")
-    fig_line = go.Figure()
-    fig_line.add_trace(go.Scatter(x=df_tot['Taglia'], y=df_tot['Qta_Acquistata'], mode='lines+markers', name='Acquistato', line=dict(color=COLOR_ACQ, width=2)))
-    fig_line.add_trace(go.Scatter(x=df_tot['Taglia'], y=df_tot['Qta_Venduta'], mode='lines+markers', name='Venduto', line=dict(color=COLOR_VEND, width=3)))
-    
-    fig_line.update_layout(
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        margin=dict(l=20, r=20, t=40, b=20),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        font=dict(family="Inter, sans-serif", color="#475569")
-    )
-    fig_line.update_yaxes(gridcolor='#f1f5f9')
-    fig_line.update_xaxes(type='category', title_text='')
-    st.plotly_chart(fig_line, use_container_width=True)
-
-# --- SEZIONE 2.5: CATEGORIA E PRODUTTORI ---
-st.markdown("<hr style='margin-top: 0; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
-
-cat_vend = df_vend.groupby('Categoria')['Qta_Venduta'].sum().reset_index()
-cat_acq = df_acq.groupby('Categoria')['Qta_Acquistata'].sum().reset_index()
-cat_agg = pd.merge(cat_acq, cat_vend, on='Categoria', how='outer').fillna(0)
-cat_agg = cat_agg.sort_values('Qta_Venduta', ascending=False)
-
-prod_chart_acq = df_acq.groupby('Produttore')['Qta_Acquistata'].sum().reset_index()
-prod_chart_vend = df_vend.groupby('Produttore')['Qta_Venduta'].sum().reset_index()
-prod_chart = pd.merge(prod_chart_acq, prod_chart_vend, on='Produttore', how='outer').fillna(0)
-prod_chart = prod_chart.sort_values('Qta_Acquistata', ascending=False).head(15).reset_index(drop=True)
-
-col_cp1, col_cp2 = st.columns(2)
-
-with col_cp1:
+with col_right:
     st.subheader("Andamento per Categoria")
 
     fig_cat_bar = go.Figure()
@@ -252,31 +226,21 @@ with col_cp1:
 
     st.plotly_chart(fig_cat_bar, use_container_width=True)
 
-with col_cp2:
-    st.subheader("Andamento per Produttore")
+st.subheader("Trend Sell-Through per Taglie")
+fig_line = go.Figure()
+fig_line.add_trace(go.Scatter(x=df_tot['Taglia'], y=df_tot['Qta_Acquistata'], mode='lines+markers', name='Acquistato', line=dict(color=COLOR_ACQ, width=2)))
+fig_line.add_trace(go.Scatter(x=df_tot['Taglia'], y=df_tot['Qta_Venduta'], mode='lines+markers', name='Venduto', line=dict(color=COLOR_VEND, width=3)))
 
-    fig_prod_bar = go.Figure()
-    fig_prod_bar.add_trace(go.Bar(
-        x=prod_chart['Produttore'], y=prod_chart['Qta_Acquistata'],
-        name='Acquistato', marker_color=COLOR_ACQ
-    ))
-    fig_prod_bar.add_trace(go.Bar(
-        x=prod_chart['Produttore'], y=prod_chart['Qta_Venduta'],
-        name='Venduto', marker_color=COLOR_VEND
-    ))
-
-    fig_prod_bar.update_layout(
-        barmode='group',
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        margin=dict(l=20, r=20, t=40, b=80),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        font=dict(family="Inter, sans-serif", color="#475569")
-    )
-    fig_prod_bar.update_yaxes(gridcolor='#f1f5f9', title='Quantità')
-    fig_prod_bar.update_xaxes(type='category', title_text='', tickangle=45)
-
-    st.plotly_chart(fig_prod_bar, use_container_width=True)
+fig_line.update_layout(
+    plot_bgcolor='rgba(0,0,0,0)',
+    paper_bgcolor='rgba(0,0,0,0)',
+    margin=dict(l=20, r=20, t=40, b=20),
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    font=dict(family="Inter, sans-serif", color="#475569")
+)
+fig_line.update_yaxes(gridcolor='#f1f5f9')
+fig_line.update_xaxes(type='category', title_text='')
+st.plotly_chart(fig_line, use_container_width=True)
 
 # --- SEZIONE 2.7: VENDITE PER NEGOZIO ---
 st.markdown("<hr style='margin-top: 0; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
