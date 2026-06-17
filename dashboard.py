@@ -15,6 +15,17 @@ if 'df_vend_raw' not in st.session_state:
     st.session_state.df_acq_raw = None
     st.session_state.file_name = None
 
+def reset_filters():
+    st.session_state.filter_linea = []
+    st.session_state.filter_categoria = []
+    st.session_state.filter_stagione = []
+    st.session_state.filter_taglia = []
+    st.session_state.filter_produttore = []
+    st.session_state.year_filter = "Tutti"
+    st.session_state.quarter_filter = "Tutti"
+    st.session_state.month_filter = "Tutti"
+    st.session_state.day_filter = "Tutti"
+
 if st.session_state.df_vend_raw is None:
     st.title("Sportway Analisi Dati")
     st.markdown("Carica un file Excel per iniziare l'analisi.")
@@ -65,10 +76,12 @@ filter_opts = get_filter_options(df_vend_raw, df_acq_raw)
 # LAYOUT PRINCIPALE (Bento-Grid)
 # ==========================================
 st.title("Esplorazione Dati Taglie")
-col_title, col_new = st.columns([6, 1])
+col_title, col_reset, col_new = st.columns([6, 1, 1])
 with col_title:
     st.markdown("Analisi incrociata di Acquisti e Vendite per ottimizzare lo stock.")
     st.caption(f"File: {st.session_state.file_name}")
+with col_reset:
+    st.button("↺ Reset Filtri", on_click=reset_filters, use_container_width=True)
 with col_new:
     if st.button("← Nuova Analisi", use_container_width=True):
         st.session_state.df_vend_raw = None
@@ -80,15 +93,15 @@ with col_new:
 st.markdown("### Filtri Ricerca")
 f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns(5)
 with f_col1:
-    selected_linee = st.multiselect("Linea", filter_opts.get('Linea', []), placeholder="Tutte le Linee")
+    selected_linee = st.multiselect("Linea", filter_opts.get('Linea', []), placeholder="Tutte le Linee", key="filter_linea")
 with f_col2:
-    selected_cat = st.multiselect("Categoria", filter_opts.get('Categoria', []), placeholder="Tutte le Categorie")
+    selected_cat = st.multiselect("Categoria", filter_opts.get('Categoria', []), placeholder="Tutte le Categorie", key="filter_categoria")
 with f_col3:
-    selected_stag = st.multiselect("Stagione", filter_opts.get('Stagione', []), placeholder="Tutte le Stagioni")
+    selected_stag = st.multiselect("Stagione", filter_opts.get('Stagione', []), placeholder="Tutte le Stagioni", key="filter_stagione")
 with f_col4:
-    selected_taglie = st.multiselect("Taglia", filter_opts.get('Taglia', []), placeholder="Tutte le Taglie")
+    selected_taglie = st.multiselect("Taglia", filter_opts.get('Taglia', []), placeholder="Tutte le Taglie", key="filter_taglia")
 with f_col5:
-    selected_prod = st.multiselect("Produttore", filter_opts.get('Produttore', []), placeholder="Tutti i Produttori")
+    selected_prod = st.multiselect("Produttore", filter_opts.get('Produttore', []), placeholder="Tutti i Produttori", key="filter_produttore")
 
 st.markdown("<hr style='margin-top: 0; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
 
