@@ -45,6 +45,10 @@ def load_data(file_source=None):
     df_vend.rename(columns=lambda x: x.strip(), inplace=True)
     df_acq.rename(columns=lambda x: x.strip(), inplace=True)
     
+    # Unifica Deposito (ACQ) in Negozio per filtrare uniformemente
+    if 'Deposito' in df_acq.columns:
+        df_acq.rename(columns={'Deposito': 'Negozio'}, inplace=True)
+    
     # Mappa manuale per le colonne di quantità
     for col in df_vend.columns:
         if "Quantit" in col and "Venduta" in col:
@@ -61,7 +65,7 @@ def load_data(file_source=None):
         df_acq['Data'] = pd.to_datetime(df_acq['Data Acquisto'], errors='coerce')
 
     # Convertiamo tutte le colonne categoriche in stringhe gestendo valori nulli e decimali (es. 42.0 -> 42)
-    cat_cols = ['Linea', 'Stagione', 'Taglia', 'Categoria', 'Produttore']
+    cat_cols = ['Linea', 'Stagione', 'Taglia', 'Categoria', 'Produttore', 'Negozio']
     for col in cat_cols:
         if col in df_vend.columns:
             df_vend[col] = df_vend[col].fillna('N.D. / Unica').astype(str).str.replace(r'\.0$', '', regex=True)
@@ -109,7 +113,7 @@ def get_filter_options(df_vend, df_acq):
     """Estrae le opzioni uniche per i filtri."""
     # Uniamo le opzioni di acquisti e vendite per avere una lista completa
     options = {}
-    cols = ['Linea', 'Categoria', 'Stagione', 'Taglia', 'Produttore']
+    cols = ['Linea', 'Categoria', 'Stagione', 'Taglia', 'Produttore', 'Negozio']
     
     for col in cols:
         v_opts = set(df_vend[col].dropna().unique()) if col in df_vend.columns else set()

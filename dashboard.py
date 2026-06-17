@@ -21,6 +21,7 @@ def reset_filters():
     st.session_state.filter_stagione = []
     st.session_state.filter_taglia = []
     st.session_state.filter_produttore = []
+    st.session_state.filter_negozio = []
     st.session_state.year_filter = "Tutti"
     st.session_state.quarter_filter = "Tutti"
     st.session_state.month_filter = "Tutti"
@@ -103,6 +104,10 @@ with f_col4:
 with f_col5:
     selected_prod = st.multiselect("Produttore", filter_opts.get('Produttore', []), placeholder="Tutti i Produttori", key="filter_produttore")
 
+f_col6, f_col7, f_col8 = st.columns(3)
+with f_col6:
+    selected_negozio = st.multiselect("Negozio", filter_opts.get('Negozio', []), placeholder="Tutti i Negozi", key="filter_negozio")
+
 st.markdown("<hr style='margin-top: 0; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
 
 # Crea dizionario filtri
@@ -111,7 +116,8 @@ filters = {
     'Categoria': selected_cat,
     'Stagione': selected_stag,
     'Taglia': selected_taglie,
-    'Produttore': selected_prod
+    'Produttore': selected_prod,
+    'Negozio': selected_negozio
 }
 
 # 4. Applica Filtri (Categoria)
