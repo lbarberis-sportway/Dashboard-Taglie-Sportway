@@ -134,6 +134,75 @@ def filter_dataframe(df, filters):
             df_filtered = df_filtered[df_filtered[col].isin(values)]
     return df_filtered
 
+def filter_by_date_range(df, year, end_month):
+    """Filtra i dati dal 1 Gennaio alla fine del mese specificato."""
+    df_filtered = df.copy()
+    df_filtered = df_filtered[df_filtered['Data'].dt.year == year]
+    df_filtered = df_filtered[df_filtered['Data'].dt.month <= end_month]
+    return df_filtered
+
+def filter_by_iso_week_range(df, iso_year, end_week):
+    """Filtra i dati per anno ISO e settimana ISO (settimana 1 a end_week)."""
+    df_filtered = df.copy()
+    iso = df_filtered['Data'].dt.isocalendar()
+    df_filtered = df_filtered[(iso['year'] == iso_year) & (iso['week'] <= end_week)]
+    return df_filtered
+
+def merge_period_comparison(df_vend_p1, df_acq_p1, df_vend_p2, df_acq_p2, group_col='Taglia'):
+    """Aggrega due periodi in un unico dataframe di confronto con delta."""
+    all_vals = set()
+    for df in [df_vend_p1, df_acq_p1, df_vend_p2, df_acq_p2]:
+        if group_col in df.columns:
+            all_vals.update(df[group_col].dropna().unique())
+
+    if group_col == 'Taglia':
+        dtype = _taglia_cat_dtype(all_vals)
+    else:
+        dtype = None
+
+    def _agg(df_v, df_a):
+        a = df_a.groupby(group_col, observed=True)['Qta_Acquistata'].sum().reset_index() if group_col in df_a.columns else pd.DataFrame()
+        v = df_v.groupby(group_col, observed=True)['Qta_Venduta'].sum().reset_index() if group_col in df_v.columns else pd.DataFrame()
+        if not a.empty and not v.empty:
+            m = pd.merge(a, v, on=group_col, how='outer').fillna(0)
+        elif not a.empty:
+            m = a.copy()
+            m['Qta_Venduta'] = 0
+        elif not v.empty:
+            m = v.copy()
+            m['Qta_Acquistata'] = 0
+        else:
+            m = pd.DataFrame(columns=[group_col, 'Qta_Acquistata', 'Qta_Venduta'])
+        cols = [c for c in [group_col, 'Qta_Acquistata', 'Qta_Venduta'] if c in m.columns]
+        return m[cols]
+
+    p1 = _agg(df_vend_p1, df_acq_p1)
+    p2 = _agg(df_vend_p2, df_acq_p2)
+
+    p1 = p1.rename(columns={'Qta_Acquistata': 'P1_Acq', 'Qta_Venduta': 'P1_Vend'})
+    p2 = p2.rename(columns={'Qta_Acquistata': 'P2_Acq', 'Qta_Venduta': 'P2_Vend'})
+
+    merged = pd.merge(p1, p2, on=group_col, how='outer').fillna(0)
+
+    for c in ['P1_Acq', 'P1_Vend', 'P2_Acq', 'P2_Vend']:
+        if c not in merged.columns:
+            merged[c] = 0
+
+    merged['P1_ST%'] = (merged['P1_Vend'] / merged['P1_Acq'] * 100).replace([float('inf'), -float('inf')], 0).fillna(0)
+    merged['P2_ST%'] = (merged['P2_Vend'] / merged['P2_Acq'] * 100).replace([float('inf'), -float('inf')], 0).fillna(0)
+
+    merged['Delta_Acq'] = merged['P1_Acq'] - merged['P2_Acq']
+    merged['Delta_Vend'] = merged['P1_Vend'] - merged['P2_Vend']
+    merged['Delta_ST'] = merged['P1_ST%'] - merged['P2_ST%']
+
+    if dtype is not None:
+        merged[group_col] = merged[group_col].astype(dtype)
+        merged = merged.sort_values(group_col)
+    else:
+        merged = merged.sort_values('P1_Acq', ascending=False)
+
+    return merged.reset_index(drop=True)
+
 def merge_and_aggregate(df_vend, df_acq):
     """Aggrega per Taglia e Stagione, e calcola il Sell-Through Rate."""
     all_taglie = set()

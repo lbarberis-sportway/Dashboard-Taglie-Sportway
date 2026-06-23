@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from data_engine import load_data, get_filter_options, filter_dataframe, merge_and_aggregate, get_date_reference, get_date_options, filter_by_date, list_excel_files
+from data_engine import load_data, get_filter_options, filter_dataframe, merge_and_aggregate, get_date_reference, get_date_options, filter_by_date, merge_period_comparison, list_excel_files
 
 st.set_page_config(page_title="Analisi Taglie | Dashboard", page_icon="logo.png", layout="wide", initial_sidebar_state="collapsed")
 
@@ -123,6 +123,8 @@ filters = {
 # 4. Applica Filtri (Categoria)
 df_vend = filter_dataframe(df_vend_raw, filters)
 df_acq = filter_dataframe(df_acq_raw, filters)
+df_vend_cat = df_vend.copy()
+df_acq_cat = df_acq.copy()
 
 # 4.5 Filtri Temporali
 st.markdown("### Filtri Temporali")
@@ -168,136 +170,10 @@ df_acq = filter_by_date(df_acq, year=year_val, quarter=quarter_val, month=month_
 
 st.markdown("<hr style='margin-top: 0; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
 
-# 5. Aggregazione
-df_stag, df_tot = merge_and_aggregate(df_vend, df_acq)
-
-# --- SEZIONE 1: KPI (Metriche in evidenza) ---
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    tot_acq = df_tot['Qta_Acquistata'].sum()
-    st.metric("Totale Acquistato", f"{int(tot_acq):,}".replace(",", "."))
-with col2:
-    tot_vend = df_tot['Qta_Venduta'].sum()
-    st.metric("Totale Venduto", f"{int(tot_vend):,}".replace(",", "."))
-with col3:
-    sell_through = (tot_vend / tot_acq * 100) if tot_acq > 0 else 0
-    st.metric("Sell-Through %", f"{sell_through:.1f}%")
-with col4:
-    taglie_attive = df_tot[df_tot['Qta_Acquistata'] > 0]['Taglia'].nunique()
-    st.metric("Taglie Analizzate", f"{taglie_attive}")
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-COLOR_ACQ = "#3b82f6" # Blu 500
-COLOR_VEND = "#f59e0b" # Ambra 500
-
-# --- SEZIONE 2.5: CATEGORIA E TAGLIE ---
-st.markdown("<hr style='margin-top: 0; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
-
-cat_vend = df_vend.groupby('Categoria')['Qta_Venduta'].sum().reset_index()
-cat_acq = df_acq.groupby('Categoria')['Qta_Acquistata'].sum().reset_index()
-cat_agg = pd.merge(cat_acq, cat_vend, on='Categoria', how='outer').fillna(0)
-cat_agg = cat_agg.sort_values('Qta_Venduta', ascending=False)
-
-col_left, col_right = st.columns(2)
-
-with col_left:
-    st.subheader("Andamento per Taglia")
-    fig_bar = go.Figure()
-    fig_bar.add_trace(go.Bar(x=df_tot['Taglia'], y=df_tot['Qta_Acquistata'], name='Acquistato', marker_color=COLOR_ACQ))
-    fig_bar.add_trace(go.Bar(x=df_tot['Taglia'], y=df_tot['Qta_Venduta'], name='Venduto', marker_color=COLOR_VEND))
-
-    fig_bar.update_layout(
-        barmode='group',
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        margin=dict(l=20, r=20, t=40, b=20),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        font=dict(family="Inter, sans-serif", color="#475569")
-    )
-    fig_bar.update_yaxes(gridcolor='#f1f5f9')
-    fig_bar.update_xaxes(type='category', title_text='')
-    st.plotly_chart(fig_bar, use_container_width=True)
-
-with col_right:
-    st.subheader("Andamento per Categoria")
-
-    fig_cat_bar = go.Figure()
-    fig_cat_bar.add_trace(go.Bar(
-        x=cat_agg['Categoria'], y=cat_agg['Qta_Acquistata'],
-        name='Acquistato', marker_color=COLOR_ACQ
-    ))
-    fig_cat_bar.add_trace(go.Bar(
-        x=cat_agg['Categoria'], y=cat_agg['Qta_Venduta'],
-        name='Venduto', marker_color=COLOR_VEND
-    ))
-
-    fig_cat_bar.update_layout(
-        barmode='group',
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        margin=dict(l=20, r=20, t=40, b=20),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        font=dict(family="Inter, sans-serif", color="#475569")
-    )
-    fig_cat_bar.update_yaxes(gridcolor='#f1f5f9', title='Quantità')
-    fig_cat_bar.update_xaxes(type='category', title_text='')
-
-    st.plotly_chart(fig_cat_bar, use_container_width=True)
-
-st.subheader("Trend Sell-Through per Taglie")
-fig_line = go.Figure()
-fig_line.add_trace(go.Scatter(x=df_tot['Taglia'], y=df_tot['Qta_Acquistata'], mode='lines+markers', name='Acquistato', line=dict(color=COLOR_ACQ, width=2)))
-fig_line.add_trace(go.Scatter(x=df_tot['Taglia'], y=df_tot['Qta_Venduta'], mode='lines+markers', name='Venduto', line=dict(color=COLOR_VEND, width=3)))
-
-fig_line.update_layout(
-    plot_bgcolor='rgba(0,0,0,0)',
-    paper_bgcolor='rgba(0,0,0,0)',
-    margin=dict(l=20, r=20, t=40, b=20),
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-    font=dict(family="Inter, sans-serif", color="#475569")
-)
-fig_line.update_yaxes(gridcolor='#f1f5f9')
-fig_line.update_xaxes(type='category', title_text='')
-st.plotly_chart(fig_line, use_container_width=True)
-
-# --- SEZIONE 2.7: VENDITE PER NEGOZIO ---
-st.markdown("<hr style='margin-top: 0; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
-st.subheader("Vendite per Negozio")
-
-negozi_agg = df_vend.groupby('Negozio')['Qta_Venduta'].sum().reset_index()
-negozi_agg = negozi_agg.sort_values('Qta_Venduta', ascending=True)
-
-fig_negozi = go.Figure()
-fig_negozi.add_trace(go.Bar(
-    x=negozi_agg['Qta_Venduta'],
-    y=negozi_agg['Negozio'],
-    orientation='h',
-    marker_color=COLOR_VEND,
-    name='Venduto'
-))
-
-fig_negozi.update_layout(
-    plot_bgcolor='rgba(0,0,0,0)',
-    paper_bgcolor='rgba(0,0,0,0)',
-    margin=dict(l=20, r=20, t=20, b=20),
-    font=dict(family="Inter, sans-serif", color="#475569")
-)
-fig_negozi.update_yaxes(gridcolor='#f1f5f9')
-fig_negozi.update_xaxes(title='Quantità Venduta', gridcolor='#f1f5f9')
-
-st.plotly_chart(fig_negozi, use_container_width=True)
-
-# --- SEZIONE 3: MATRICE DATI AVANZATA ---
-st.subheader("Matrice Taglie")
-st.markdown("Esplora i dati per Stagione e Taglia. Clicca sulle intestazioni per ordinare.")
-
-display_df = df_stag.copy()
-display_df = display_df[['Taglia', 'Stagione', 'Qta_Acquistata', 'Qta_Venduta', 'Sell_Through_%']]
-display_df.rename(columns={
-    'Qta_Acquistata': 'Somma Q.tà Acquistata',
-    'Qta_Venduta': 'Somma Q.tà Venduta'
-}, inplace=True)
+COLOR_ACQ = "#3b82f6"
+COLOR_VEND = "#f59e0b"
+COLOR_ACQ_LIGHT = "#93c5fd"
+COLOR_VEND_LIGHT = "#fcd34d"
 
 def _c_str(val):
     if pd.isna(val):
@@ -308,117 +184,527 @@ def _c_str(val):
         return 'color: #d97706; font-weight: 600'
     return 'color: #16a34a; font-weight: 600'
 
-styled = (
-    display_df.style
-    .map(_c_str, subset=['Sell_Through_%'])
-    .format({
-        'Somma Q.tà Acquistata': '{:.0f}',
-        'Somma Q.tà Venduta': '{:.0f}',
-        'Sell_Through_%': '{:.1f}%'
+def _c_str_delta(val):
+    if pd.isna(val) or val == 0:
+        return 'color: #94a3b8'
+    if val > 0:
+        return 'color: #16a34a; font-weight: 600'
+    return 'color: #dc2626; font-weight: 600'
+
+def _fmt_delta(val):
+    if pd.isna(val) or val == 0:
+        return '0'
+    if val > 0:
+        return f'+{val:,.0f}'.replace(',', '.')
+    return f'{val:,.0f}'.replace(',', '.')
+
+def _fmt_delta_pct(val):
+    if pd.isna(val) or abs(val) < 0.01:
+        return '0.0%'
+    if val > 0:
+        return f'+{val:.1f}%'
+    return f'{val:.1f}%'
+
+tab1, tab2 = st.tabs(["📊 Analisi Completa", "📈 Confronto YTD"])
+
+# ===================== TAB 1: ANALISI COMPLETA =====================
+with tab1:
+    df_stag, df_tot = merge_and_aggregate(df_vend, df_acq)
+
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        tot_acq = df_tot['Qta_Acquistata'].sum()
+        st.metric("Totale Acquistato", f"{int(tot_acq):,}".replace(",", "."))
+    with col2:
+        tot_vend = df_tot['Qta_Venduta'].sum()
+        st.metric("Totale Venduto", f"{int(tot_vend):,}".replace(",", "."))
+    with col3:
+        sell_through = (tot_vend / tot_acq * 100) if tot_acq > 0 else 0
+        st.metric("Sell-Through %", f"{sell_through:.1f}%")
+    with col4:
+        taglie_attive = df_tot[df_tot['Qta_Acquistata'] > 0]['Taglia'].nunique()
+        st.metric("Taglie Analizzate", f"{taglie_attive}")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    st.markdown("<hr style='margin-top: 0; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
+
+    cat_vend = df_vend.groupby('Categoria')['Qta_Venduta'].sum().reset_index()
+    cat_acq = df_acq.groupby('Categoria')['Qta_Acquistata'].sum().reset_index()
+    cat_agg = pd.merge(cat_acq, cat_vend, on='Categoria', how='outer').fillna(0)
+    cat_agg = cat_agg.sort_values('Qta_Venduta', ascending=False)
+
+    col_left, col_right = st.columns(2)
+
+    with col_left:
+        st.subheader("Andamento per Taglia")
+        fig_bar = go.Figure()
+        fig_bar.add_trace(go.Bar(x=df_tot['Taglia'], y=df_tot['Qta_Acquistata'], name='Acquistato', marker_color=COLOR_ACQ))
+        fig_bar.add_trace(go.Bar(x=df_tot['Taglia'], y=df_tot['Qta_Venduta'], name='Venduto', marker_color=COLOR_VEND))
+
+        fig_bar.update_layout(
+            barmode='group',
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            margin=dict(l=20, r=20, t=40, b=20),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            font=dict(family="Inter, sans-serif", color="#475569")
+        )
+        fig_bar.update_yaxes(gridcolor='#f1f5f9')
+        fig_bar.update_xaxes(type='category', title_text='')
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+    with col_right:
+        st.subheader("Andamento per Categoria")
+
+        fig_cat_bar = go.Figure()
+        fig_cat_bar.add_trace(go.Bar(
+            x=cat_agg['Categoria'], y=cat_agg['Qta_Acquistata'],
+            name='Acquistato', marker_color=COLOR_ACQ
+        ))
+        fig_cat_bar.add_trace(go.Bar(
+            x=cat_agg['Categoria'], y=cat_agg['Qta_Venduta'],
+            name='Venduto', marker_color=COLOR_VEND
+        ))
+
+        fig_cat_bar.update_layout(
+            barmode='group',
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            margin=dict(l=20, r=20, t=40, b=20),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            font=dict(family="Inter, sans-serif", color="#475569")
+        )
+        fig_cat_bar.update_yaxes(gridcolor='#f1f5f9', title='Quantità')
+        fig_cat_bar.update_xaxes(type='category', title_text='')
+
+        st.plotly_chart(fig_cat_bar, use_container_width=True)
+
+    st.subheader("Trend Sell-Through per Taglie")
+    fig_line = go.Figure()
+    fig_line.add_trace(go.Scatter(x=df_tot['Taglia'], y=df_tot['Qta_Acquistata'], mode='lines+markers', name='Acquistato', line=dict(color=COLOR_ACQ, width=2)))
+    fig_line.add_trace(go.Scatter(x=df_tot['Taglia'], y=df_tot['Qta_Venduta'], mode='lines+markers', name='Venduto', line=dict(color=COLOR_VEND, width=3)))
+
+    fig_line.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        margin=dict(l=20, r=20, t=40, b=20),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        font=dict(family="Inter, sans-serif", color="#475569")
+    )
+    fig_line.update_yaxes(gridcolor='#f1f5f9')
+    fig_line.update_xaxes(type='category', title_text='')
+    st.plotly_chart(fig_line, use_container_width=True)
+
+    st.markdown("<hr style='margin-top: 0; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
+    st.subheader("Vendite per Negozio")
+
+    negozi_agg = df_vend.groupby('Negozio')['Qta_Venduta'].sum().reset_index()
+    negozi_agg = negozi_agg.sort_values('Qta_Venduta', ascending=True)
+
+    fig_negozi = go.Figure()
+    fig_negozi.add_trace(go.Bar(
+        x=negozi_agg['Qta_Venduta'],
+        y=negozi_agg['Negozio'],
+        orientation='h',
+        marker_color=COLOR_VEND,
+        name='Venduto'
+    ))
+
+    fig_negozi.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        margin=dict(l=20, r=20, t=20, b=20),
+        font=dict(family="Inter, sans-serif", color="#475569")
+    )
+    fig_negozi.update_yaxes(gridcolor='#f1f5f9')
+    fig_negozi.update_xaxes(title='Quantità Venduta', gridcolor='#f1f5f9')
+
+    st.plotly_chart(fig_negozi, use_container_width=True)
+
+    st.subheader("Matrice Taglie")
+    st.markdown("Esplora i dati per Stagione e Taglia. Clicca sulle intestazioni per ordinare.")
+
+    display_df = df_stag.copy()
+    display_df = display_df[['Taglia', 'Stagione', 'Qta_Acquistata', 'Qta_Venduta', 'Sell_Through_%']]
+    display_df.rename(columns={
+        'Qta_Acquistata': 'Somma Q.tà Acquistata',
+        'Qta_Venduta': 'Somma Q.tà Venduta'
+    }, inplace=True)
+
+    styled = (
+        display_df.style
+        .map(_c_str, subset=['Sell_Through_%'])
+        .format({
+            'Somma Q.tà Acquistata': '{:.0f}',
+            'Somma Q.tà Venduta': '{:.0f}',
+            'Sell_Through_%': '{:.1f}%'
+        })
+    )
+
+    st.dataframe(
+        styled,
+        use_container_width=True,
+        height=400
+    )
+
+    st.markdown("<hr style='margin-top: 2rem; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
+    st.subheader("Matrice Produttori")
+    st.markdown("Esplora i dati per Produttore.")
+
+    agg_acq_prod = df_acq.groupby('Produttore')['Qta_Acquistata'].sum().reset_index()
+    agg_vend_prod = df_vend.groupby('Produttore')['Qta_Venduta'].sum().reset_index()
+    prod_merged = pd.merge(agg_acq_prod, agg_vend_prod, on='Produttore', how='outer').fillna(0)
+    prod_merged['Sell_Through_%'] = (prod_merged['Qta_Venduta'] / prod_merged['Qta_Acquistata']) * 100
+    prod_merged['Sell_Through_%'] = prod_merged['Sell_Through_%'].replace([float('inf'), -float('inf')], 0).fillna(0)
+    prod_merged = prod_merged.sort_values('Qta_Acquistata', ascending=False).reset_index(drop=True)
+
+    prod_display = prod_merged.rename(columns={
+        'Qta_Acquistata': 'Somma Q.tà Acquistata',
+        'Qta_Venduta': 'Somma Q.tà Venduta'
     })
-)
 
-st.dataframe(
-    styled,
-    use_container_width=True,
-    height=400
-)
+    prod_styled = (
+        prod_display.style
+        .map(_c_str, subset=['Sell_Through_%'])
+        .format({
+            'Somma Q.tà Acquistata': '{:.0f}',
+            'Somma Q.tà Venduta': '{:.0f}',
+            'Sell_Through_%': '{:.1f}%'
+        })
+    )
 
-# --- SEZIONE 4: MATRICE PRODUTTORI ---
-st.markdown("<hr style='margin-top: 2rem; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
-st.subheader("Matrice Produttori")
-st.markdown("Esplora i dati per Produttore.")
+    st.dataframe(
+        prod_styled,
+        use_container_width=True,
+        height=400
+    )
 
-agg_acq_prod = df_acq.groupby('Produttore')['Qta_Acquistata'].sum().reset_index()
-agg_vend_prod = df_vend.groupby('Produttore')['Qta_Venduta'].sum().reset_index()
-prod_merged = pd.merge(agg_acq_prod, agg_vend_prod, on='Produttore', how='outer').fillna(0)
-prod_merged['Sell_Through_%'] = (prod_merged['Qta_Venduta'] / prod_merged['Qta_Acquistata']) * 100
-prod_merged['Sell_Through_%'] = prod_merged['Sell_Through_%'].replace([float('inf'), -float('inf')], 0).fillna(0)
-prod_merged = prod_merged.sort_values('Qta_Acquistata', ascending=False).reset_index(drop=True)
+    st.markdown("<hr style='margin-top: 2rem; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
+    st.subheader("Matrice Categoria")
+    st.markdown("Esplora i dati per Categoria.")
 
-prod_display = prod_merged.rename(columns={
-    'Qta_Acquistata': 'Somma Q.tà Acquistata',
-    'Qta_Venduta': 'Somma Q.tà Venduta'
-})
+    agg_acq_cat = df_acq.groupby('Categoria')['Qta_Acquistata'].sum().reset_index()
+    agg_vend_cat = df_vend.groupby('Categoria')['Qta_Venduta'].sum().reset_index()
+    cat_merged = pd.merge(agg_acq_cat, agg_vend_cat, on='Categoria', how='outer').fillna(0)
+    cat_merged['Sell_Through_%'] = (cat_merged['Qta_Venduta'] / cat_merged['Qta_Acquistata']) * 100
+    cat_merged['Sell_Through_%'] = cat_merged['Sell_Through_%'].replace([float('inf'), -float('inf')], 0).fillna(0)
+    cat_merged = cat_merged.sort_values('Qta_Acquistata', ascending=False).reset_index(drop=True)
 
-prod_styled = (
-    prod_display.style
-    .map(_c_str, subset=['Sell_Through_%'])
-    .format({
-        'Somma Q.tà Acquistata': '{:.0f}',
-        'Somma Q.tà Venduta': '{:.0f}',
-        'Sell_Through_%': '{:.1f}%'
+    cat_display = cat_merged.rename(columns={
+        'Qta_Acquistata': 'Somma Q.tà Acquistata',
+        'Qta_Venduta': 'Somma Q.tà Venduta'
     })
-)
 
-st.dataframe(
-    prod_styled,
-    use_container_width=True,
-    height=400
-)
+    cat_styled = (
+        cat_display.style
+        .map(_c_str, subset=['Sell_Through_%'])
+        .format({
+            'Somma Q.tà Acquistata': '{:.0f}',
+            'Somma Q.tà Venduta': '{:.0f}',
+            'Sell_Through_%': '{:.1f}%'
+        })
+    )
 
-# --- SEZIONE 5: MATRICE CATEGORIA ---
-st.markdown("<hr style='margin-top: 2rem; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
-st.subheader("Matrice Categoria")
-st.markdown("Esplora i dati per Categoria.")
+    st.dataframe(
+        cat_styled,
+        use_container_width=True,
+        height=400
+    )
 
-agg_acq_cat = df_acq.groupby('Categoria')['Qta_Acquistata'].sum().reset_index()
-agg_vend_cat = df_vend.groupby('Categoria')['Qta_Venduta'].sum().reset_index()
-cat_merged = pd.merge(agg_acq_cat, agg_vend_cat, on='Categoria', how='outer').fillna(0)
-cat_merged['Sell_Through_%'] = (cat_merged['Qta_Venduta'] / cat_merged['Qta_Acquistata']) * 100
-cat_merged['Sell_Through_%'] = cat_merged['Sell_Through_%'].replace([float('inf'), -float('inf')], 0).fillna(0)
-cat_merged = cat_merged.sort_values('Qta_Acquistata', ascending=False).reset_index(drop=True)
+    st.markdown("<hr style='margin-top: 2rem; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
+    st.subheader("Matrice Linea")
+    st.markdown("Esplora i dati per Linea.")
 
-cat_display = cat_merged.rename(columns={
-    'Qta_Acquistata': 'Somma Q.tà Acquistata',
-    'Qta_Venduta': 'Somma Q.tà Venduta'
-})
+    agg_acq_linea = df_acq.groupby('Linea')['Qta_Acquistata'].sum().reset_index()
+    agg_vend_linea = df_vend.groupby('Linea')['Qta_Venduta'].sum().reset_index()
+    linea_merged = pd.merge(agg_acq_linea, agg_vend_linea, on='Linea', how='outer').fillna(0)
+    linea_merged['Sell_Through_%'] = (linea_merged['Qta_Venduta'] / linea_merged['Qta_Acquistata']) * 100
+    linea_merged['Sell_Through_%'] = linea_merged['Sell_Through_%'].replace([float('inf'), -float('inf')], 0).fillna(0)
+    linea_merged = linea_merged.sort_values('Qta_Acquistata', ascending=False).reset_index(drop=True)
 
-cat_styled = (
-    cat_display.style
-    .map(_c_str, subset=['Sell_Through_%'])
-    .format({
-        'Somma Q.tà Acquistata': '{:.0f}',
-        'Somma Q.tà Venduta': '{:.0f}',
-        'Sell_Through_%': '{:.1f}%'
+    linea_display = linea_merged.rename(columns={
+        'Qta_Acquistata': 'Somma Q.tà Acquistata',
+        'Qta_Venduta': 'Somma Q.tà Venduta'
     })
-)
 
-st.dataframe(
-    cat_styled,
-    use_container_width=True,
-    height=400
-)
+    linea_styled = (
+        linea_display.style
+        .map(_c_str, subset=['Sell_Through_%'])
+        .format({
+            'Somma Q.tà Acquistata': '{:.0f}',
+            'Somma Q.tà Venduta': '{:.0f}',
+            'Sell_Through_%': '{:.1f}%'
+        })
+    )
 
-# --- SEZIONE 6: MATRICE LINEA ---
-st.markdown("<hr style='margin-top: 2rem; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
-st.subheader("Matrice Linea")
-st.markdown("Esplora i dati per Linea.")
+    st.dataframe(
+        linea_styled,
+        use_container_width=True,
+        height=400
+    )
 
-agg_acq_linea = df_acq.groupby('Linea')['Qta_Acquistata'].sum().reset_index()
-agg_vend_linea = df_vend.groupby('Linea')['Qta_Venduta'].sum().reset_index()
-linea_merged = pd.merge(agg_acq_linea, agg_vend_linea, on='Linea', how='outer').fillna(0)
-linea_merged['Sell_Through_%'] = (linea_merged['Qta_Venduta'] / linea_merged['Qta_Acquistata']) * 100
-linea_merged['Sell_Through_%'] = linea_merged['Sell_Through_%'].replace([float('inf'), -float('inf')], 0).fillna(0)
-linea_merged = linea_merged.sort_values('Qta_Acquistata', ascending=False).reset_index(drop=True)
+# ===================== TAB 2: CONFRONTO YTD =====================
+with tab2:
+    max_data = date_ref['Data'].max()
+    anni_disponibili = sorted(date_ref['Data'].dt.year.unique(), reverse=True)
+    mesi_nomi_cap = {1:"Gen",2:"Feb",3:"Mar",4:"Apr",5:"Mag",6:"Giu",
+                     7:"Lug",8:"Ago",9:"Set",10:"Ott",11:"Nov",12:"Dic"}
 
-linea_display = linea_merged.rename(columns={
-    'Qta_Acquistata': 'Somma Q.tà Acquistata',
-    'Qta_Venduta': 'Somma Q.tà Venduta'
-})
+    st.markdown("### Confronto Anno su Anno")
+    ytd_col1, ytd_col2, ytd_col3 = st.columns([1, 1, 1])
 
-linea_styled = (
-    linea_display.style
-    .map(_c_str, subset=['Sell_Through_%'])
-    .format({
-        'Somma Q.tà Acquistata': '{:.0f}',
-        'Somma Q.tà Venduta': '{:.0f}',
-        'Sell_Through_%': '{:.1f}%'
-    })
-)
+    with ytd_col1:
+        ref_year = st.selectbox("Anno Riferimento", anni_disponibili,
+                                index=0, key="ytd_ref_year")
+    with ytd_col2:
+        comp_opts = [a for a in anni_disponibili if a != ref_year]
+        comp_year = st.selectbox("Anno Confronto", comp_opts,
+                                 index=0 if comp_opts else 0,
+                                 key="ytd_comp_year")
+    with ytd_col3:
+        sel_date = st.date_input("Data Fine Confronto", value=max_data.date(),
+                                 min_value=pd.Timestamp(ref_year, 1, 1).date(),
+                                 max_value=max_data.date(),
+                                 format="DD/MM/YYYY",
+                                 key="ytd_end_date")
 
-st.dataframe(
-    linea_styled,
-    use_container_width=True,
-    height=400
-)
+    # Trova data corrispondente nel comparison year (stessa settimana ISO, stesso giorno)
+    sel_ts = pd.Timestamp(sel_date)
+    _iso_w, _iso_d = sel_ts.isocalendar()[1], sel_ts.isocalendar()[2]
+    try:
+        comp_corr = pd.Timestamp.fromisocalendar(comp_year, _iso_w, _iso_d)
+    except ValueError:
+        comp_corr = pd.Timestamp(comp_year, 12, 31)
+        # Retrocede fino al giorno della settimana corrispondente
+        off = (_iso_d - comp_corr.dayofweek()) % 7
+        comp_corr -= pd.Timedelta(days=off)
+
+    ref_start = pd.Timestamp(ref_year, 1, 1)
+    ref_end = sel_ts
+    _j1_w, _j1_d = ref_start.isocalendar()[1], ref_start.isocalendar()[2]
+    try:
+        comp_start = pd.Timestamp.fromisocalendar(comp_year, _j1_w, _j1_d)
+    except ValueError:
+        comp_start = pd.Timestamp(comp_year, 1, 1)
+    comp_end = comp_corr
+
+    def _fmt_period(s, e):
+        return f"{s.day:02d} {mesi_nomi_cap[s.month]} {s.year} → {e.day:02d} {mesi_nomi_cap[e.month]} {e.year}"
+
+    st.caption(
+        f"**{ref_year}**: {_fmt_period(ref_start, ref_end)} | "
+        f"**{comp_year}**: {_fmt_period(comp_start, comp_end)}"
+    )
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    vend_p1 = df_vend_cat[(df_vend_cat['Data'] >= ref_start) & (df_vend_cat['Data'] <= ref_end)]
+    acq_p1 = df_acq_cat[df_acq_cat['Data'] <= ref_end]
+    vend_p2 = df_vend_cat[(df_vend_cat['Data'] >= comp_start) & (df_vend_cat['Data'] <= comp_end)]
+    acq_p2 = df_acq_cat[df_acq_cat['Data'] <= comp_end]
+
+    tot_acq_p1 = int(acq_p1['Qta_Acquistata'].sum())
+    tot_vend_p1 = int(vend_p1['Qta_Venduta'].sum())
+    tot_acq_p2 = int(acq_p2['Qta_Acquistata'].sum())
+    tot_vend_p2 = int(vend_p2['Qta_Venduta'].sum())
+    st_p1 = (tot_vend_p1 / tot_acq_p1 * 100) if tot_acq_p1 > 0 else 0
+    st_p2 = (tot_vend_p2 / tot_acq_p2 * 100) if tot_acq_p2 > 0 else 0
+
+    all_p1 = pd.merge(
+        acq_p1.groupby('Taglia', observed=True)['Qta_Acquistata'].sum().reset_index(),
+        vend_p1.groupby('Taglia', observed=True)['Qta_Venduta'].sum().reset_index(),
+        on='Taglia', how='outer'
+    ).fillna(0)
+    all_p2 = pd.merge(
+        acq_p2.groupby('Taglia', observed=True)['Qta_Acquistata'].sum().reset_index(),
+        vend_p2.groupby('Taglia', observed=True)['Qta_Venduta'].sum().reset_index(),
+        on='Taglia', how='outer'
+    ).fillna(0)
+    taglie_p1 = int(all_p1[all_p1['Qta_Acquistata'] > 0]['Taglia'].nunique())
+    taglie_p2 = int(all_p2[all_p2['Qta_Acquistata'] > 0]['Taglia'].nunique())
+
+    kpi_grid = st.columns(4)
+    kpi_data = [
+        ("Totale Acquistato", tot_acq_p1, tot_acq_p2,
+         lambda x: f"{x:,}".replace(",", "."), False),
+        ("Totale Venduto", tot_vend_p1, tot_vend_p2,
+         lambda x: f"{x:,}".replace(",", "."), False),
+        ("Sell-Through %", st_p1, st_p2, None, True),
+        ("Taglie Analizzate", taglie_p1, taglie_p2,
+         lambda x: str(x), False),
+    ]
+    for i, (label, p1, p2, _, is_pct) in enumerate(kpi_data):
+        with kpi_grid[i]:
+            delta_val = p1 - p2
+            if is_pct:
+                st.metric(label, f"{p1:.1f}%", delta=f"{delta_val:+.1f}%")
+            else:
+                p1_fmt = f"{p1:,}".replace(",", ".") if isinstance(p1, int) else str(p1)
+                delta_fmt = f"+{delta_val:,}".replace(",", ".") if delta_val > 0 else f"{delta_val:,}".replace(",", ".")
+                if isinstance(p1, float):
+                    st.metric(label, f"{p1:.1f}%", delta=None)
+                else:
+                    st.metric(label, p1_fmt, delta=delta_fmt if delta_val != 0 else None)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    comp_taglie = merge_period_comparison(vend_p1, acq_p1, vend_p2, acq_p2, 'Taglia')
+    comp_cat = merge_period_comparison(vend_p1, acq_p1, vend_p2, acq_p2, 'Categoria')
+
+    comp_taglie = comp_taglie[(comp_taglie['P1_Acq'] > 0) | (comp_taglie['P2_Acq'] > 0)]
+    comp_cat = comp_cat[(comp_cat['P1_Acq'] > 0) | (comp_cat['P2_Acq'] > 0)]
+
+    col_c1, col_c2 = st.columns(2)
+    with col_c1:
+        st.subheader("Confronto Acquisti per Taglia")
+        fig_acq_comp = go.Figure()
+        fig_acq_comp.add_trace(go.Bar(x=comp_taglie['Taglia'], y=comp_taglie['P1_Acq'],
+                                       name=f'Acq {ref_year}', marker_color=COLOR_ACQ))
+        fig_acq_comp.add_trace(go.Bar(x=comp_taglie['Taglia'], y=comp_taglie['P2_Acq'],
+                                       name=f'Acq {comp_year}', marker_color=COLOR_ACQ_LIGHT))
+        fig_acq_comp.update_layout(barmode='group', plot_bgcolor='rgba(0,0,0,0)',
+                                    paper_bgcolor='rgba(0,0,0,0)',
+                                    margin=dict(l=20, r=20, t=40, b=20),
+                                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                                    font=dict(family="Inter, sans-serif", color="#475569"))
+        fig_acq_comp.update_yaxes(gridcolor='#f1f5f9')
+        fig_acq_comp.update_xaxes(type='category')
+        st.plotly_chart(fig_acq_comp, use_container_width=True)
+
+    with col_c2:
+        st.subheader("Confronto Vendite per Taglia")
+        fig_vend_comp = go.Figure()
+        fig_vend_comp.add_trace(go.Bar(x=comp_taglie['Taglia'], y=comp_taglie['P1_Vend'],
+                                        name=f'Vend {ref_year}', marker_color=COLOR_VEND))
+        fig_vend_comp.add_trace(go.Bar(x=comp_taglie['Taglia'], y=comp_taglie['P2_Vend'],
+                                        name=f'Vend {comp_year}', marker_color=COLOR_VEND_LIGHT))
+        fig_vend_comp.update_layout(barmode='group', plot_bgcolor='rgba(0,0,0,0)',
+                                     paper_bgcolor='rgba(0,0,0,0)',
+                                     margin=dict(l=20, r=20, t=40, b=20),
+                                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                                     font=dict(family="Inter, sans-serif", color="#475569"))
+        fig_vend_comp.update_yaxes(gridcolor='#f1f5f9')
+        fig_vend_comp.update_xaxes(type='category')
+        st.plotly_chart(fig_vend_comp, use_container_width=True)
+
+    st.subheader("Confronto per Categoria")
+    fig_cat_comp = go.Figure()
+    fig_cat_comp.add_trace(go.Bar(x=comp_cat['Categoria'], y=comp_cat['P1_Acq'],
+                                   name=f'Acq {ref_year}', marker_color=COLOR_ACQ))
+    fig_cat_comp.add_trace(go.Bar(x=comp_cat['Categoria'], y=comp_cat['P2_Acq'],
+                                   name=f'Acq {comp_year}', marker_color=COLOR_ACQ_LIGHT))
+    fig_cat_comp.add_trace(go.Bar(x=comp_cat['Categoria'], y=comp_cat['P1_Vend'],
+                                   name=f'Vend {ref_year}', marker_color=COLOR_VEND))
+    fig_cat_comp.add_trace(go.Bar(x=comp_cat['Categoria'], y=comp_cat['P2_Vend'],
+                                   name=f'Vend {comp_year}', marker_color=COLOR_VEND_LIGHT))
+    fig_cat_comp.update_layout(barmode='group', plot_bgcolor='rgba(0,0,0,0)',
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                margin=dict(l=20, r=20, t=40, b=20),
+                                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                                font=dict(family="Inter, sans-serif", color="#475569"))
+    fig_cat_comp.update_yaxes(gridcolor='#f1f5f9')
+    fig_cat_comp.update_xaxes(type='category')
+    st.plotly_chart(fig_cat_comp, use_container_width=True)
+
+    end_week = sel_ts.isocalendar()[1]
+    color_palette = ['#3b82f6','#f59e0b','#10b981','#ef4444','#8b5cf6',
+                     '#ec4899','#06b6d4','#f97316','#6366f1','#14b8a6']
+
+    weekly_p1 = vend_p1.copy()
+    weekly_p1['ISO_Week'] = weekly_p1['Data'].dt.isocalendar()['week']
+    weekly_p2 = vend_p2.copy()
+    weekly_p2['ISO_Week'] = weekly_p2['Data'].dt.isocalendar()['week']
+
+    wk_agg_p1 = weekly_p1.groupby(['Stagione', 'ISO_Week'])['Qta_Venduta'].sum().reset_index()
+    wk_agg_p2 = weekly_p2.groupby(['Stagione', 'ISO_Week'])['Qta_Venduta'].sum().reset_index()
+
+    st.subheader("Vendite Settimanali per Stagione")
+    fig_wk = go.Figure()
+    wk_range = list(range(1, end_week + 1))
+    tutte_stag = sorted(set(wk_agg_p1['Stagione'].unique()) | set(wk_agg_p2['Stagione'].unique()))
+
+    for i, stag in enumerate(tutte_stag):
+        color = color_palette[i % len(color_palette)]
+        d1 = wk_agg_p1[wk_agg_p1['Stagione'] == stag]
+        d2 = wk_agg_p2[wk_agg_p2['Stagione'] == stag]
+        d1_full = d1.set_index('ISO_Week').reindex(wk_range, fill_value=0).reset_index()
+        d2_full = d2.set_index('ISO_Week').reindex(wk_range, fill_value=0).reset_index()
+
+        fig_wk.add_trace(go.Scatter(
+            x=d1_full['ISO_Week'], y=d1_full['Qta_Venduta'],
+            mode='lines+markers', name=f'{stag} {ref_year}',
+            line=dict(color=color, width=2, dash='solid'),
+            marker=dict(size=6)
+        ))
+        fig_wk.add_trace(go.Scatter(
+            x=d2_full['ISO_Week'], y=d2_full['Qta_Venduta'],
+            mode='lines+markers', name=f'{stag} {comp_year}',
+            line=dict(color=color, width=2, dash='dash'),
+            marker=dict(size=6)
+        ))
+
+    fig_wk.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+        margin=dict(l=20, r=20, t=40, b=20),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        font=dict(family="Inter, sans-serif", color="#475569"),
+        yaxis_title='Quantità Venduta',
+        xaxis_title='Settimana ISO',
+        hovermode='x unified'
+    )
+    fig_wk.update_yaxes(gridcolor='#f1f5f9')
+    fig_wk.update_xaxes(dtick=1)
+    st.plotly_chart(fig_wk, use_container_width=True)
+
+    def _show_comp_matrix(df, group_col, title):
+        st.markdown("<hr style='margin-top: 2rem; margin-bottom: 1rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
+        st.subheader(f"Confronto {title}")
+
+        display = df.rename(columns={
+            group_col: title,
+            'P1_Acq': f'Acq {ref_year}',
+            'P1_Vend': f'Vend {ref_year}',
+            'P1_ST%': f'ST% {ref_year}',
+            'P2_Acq': f'Acq {comp_year}',
+            'P2_Vend': f'Vend {comp_year}',
+            'P2_ST%': f'ST% {comp_year}',
+            'Delta_Acq': 'Δ Acq',
+            'Delta_Vend': 'Δ Vend',
+            'Delta_ST': 'Δ ST%'
+        })
+
+        st_cols = [title,
+                   f'Acq {ref_year}', f'Vend {ref_year}', f'ST% {ref_year}',
+                   f'Acq {comp_year}', f'Vend {comp_year}', f'ST% {comp_year}',
+                   'Δ Acq', 'Δ Vend', 'Δ ST%']
+
+        display = display[[c for c in st_cols if c in display.columns]]
+
+        styled = (
+            display.style
+            .map(_c_str, subset=[f'ST% {ref_year}', f'ST% {comp_year}'])
+            .map(_c_str_delta, subset=['Δ Acq', 'Δ Vend'])
+            .map(_c_str_delta, subset=['Δ ST%'])
+            .format({
+                f'Acq {ref_year}': '{:.0f}',
+                f'Vend {ref_year}': '{:.0f}',
+                f'ST% {ref_year}': '{:.1f}%',
+                f'Acq {comp_year}': '{:.0f}',
+                f'Vend {comp_year}': '{:.0f}',
+                f'ST% {comp_year}': '{:.1f}%',
+                'Δ Acq': _fmt_delta,
+                'Δ Vend': _fmt_delta,
+                'Δ ST%': _fmt_delta_pct,
+            })
+        )
+
+        st.dataframe(styled, use_container_width=True, height=400)
+
+    _show_comp_matrix(comp_taglie, 'Taglia', 'Taglie')
+    _show_comp_matrix(merge_period_comparison(vend_p1, acq_p1, vend_p2, acq_p2, 'Produttore'), 'Produttore', 'Produttori')
+    comp_cat_full = merge_period_comparison(vend_p1, acq_p1, vend_p2, acq_p2, 'Categoria')
+    comp_cat_full = comp_cat_full[(comp_cat_full['P1_Acq'] > 0) | (comp_cat_full['P2_Acq'] > 0)]
+    _show_comp_matrix(comp_cat_full, 'Categoria', 'Categoria')
+    comp_linea = merge_period_comparison(vend_p1, acq_p1, vend_p2, acq_p2, 'Linea')
+    comp_linea = comp_linea[(comp_linea['P1_Acq'] > 0) | (comp_linea['P2_Acq'] > 0)]
+    _show_comp_matrix(comp_linea, 'Linea', 'Linea')
