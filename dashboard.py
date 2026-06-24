@@ -622,40 +622,44 @@ with tab2:
                      '#ec4899','#06b6d4','#f97316','#6366f1','#14b8a6']
 
     weekly_p1 = df_vend_cat[df_vend_cat['Stagione'] == ref_season].copy()
-    weekly_p1['Season_Week'] = weekly_p1['Data'].dt.isocalendar().week.astype(int)
+    iso1 = weekly_p1['Data'].dt.isocalendar()
+    weekly_p1['Year'] = iso1['year'].astype(int)
+    weekly_p1['Season_Week'] = iso1['week'].astype(int)
 
     weekly_p2 = df_vend_cat[df_vend_cat['Stagione'] == comp_season].copy()
-    weekly_p2['Season_Week'] = weekly_p2['Data'].dt.isocalendar().week.astype(int)
+    iso2 = weekly_p2['Data'].dt.isocalendar()
+    weekly_p2['Year'] = iso2['year'].astype(int)
+    weekly_p2['Season_Week'] = iso2['week'].astype(int)
 
-    wk_agg_p1 = weekly_p1.groupby(['Stagione', 'Season_Week'])['Qta_Venduta'].sum().reset_index()
-    wk_agg_p2 = weekly_p2.groupby(['Stagione', 'Season_Week'])['Qta_Venduta'].sum().reset_index()
+    wk_all = pd.concat([weekly_p1, weekly_p2])
+    wk_agg = wk_all.groupby(['Stagione', 'Year', 'Season_Week'])['Qta_Venduta'].sum().reset_index()
+
+    min_wk = wk_agg['Season_Week'].min()
+    max_wk = wk_agg['Season_Week'].max()
+    wk_range = list(range(int(min_wk), int(max_wk) + 1))
+
+    def _stag_year(s):
+        return 2000 + int(s[-2:])
+
+    stagioni_uniche = sorted(set([ref_season, comp_season]))
+    stag_color = {s: color_palette[i % len(color_palette)] for i, s in enumerate(stagioni_uniche)}
+
+    coppie = wk_agg[['Stagione', 'Year']].drop_duplicates().sort_values(['Year', 'Stagione'])
 
     st.subheader("Vendite Settimanali per Stagione")
     fig_wk = go.Figure()
-    max_sw = max(wk_agg_p1['Season_Week'].max(), wk_agg_p2['Season_Week'].max())
-    wk_range = list(range(1, int(max_sw) + 1))
-    tutte_stag = sorted(set(wk_agg_p1['Stagione'].unique()) | set(wk_agg_p2['Stagione'].unique()))
 
-    _ref_sy = 2000 + int(ref_season[-2:])
-    _comp_sy = 2000 + int(comp_season[-2:])
-
-    for i, stag in enumerate(tutte_stag):
-        color = color_palette[i % len(color_palette)]
-        d1 = wk_agg_p1[wk_agg_p1['Stagione'] == stag]
-        d2 = wk_agg_p2[wk_agg_p2['Stagione'] == stag]
-        d1_full = d1.set_index('Season_Week')[['Qta_Venduta']].reindex(wk_range, fill_value=0).reset_index()
-        d2_full = d2.set_index('Season_Week')[['Qta_Venduta']].reindex(wk_range, fill_value=0).reset_index()
+    for _, row in coppie.iterrows():
+        stag, yr = row['Stagione'], row['Year']
+        color = stag_color[stag]
+        dash = 'dash' if yr != _stag_year(stag) else 'solid'
+        d = wk_agg[(wk_agg['Stagione'] == stag) & (wk_agg['Year'] == yr)]
+        d_full = d.set_index('Season_Week')[['Qta_Venduta']].reindex(wk_range, fill_value=0).reset_index()
 
         fig_wk.add_trace(go.Scatter(
-            x=d1_full['Season_Week'], y=d1_full['Qta_Venduta'],
-            mode='lines+markers', name=f'{stag} {_ref_sy}',
-            line=dict(color=color, width=2, dash='solid'),
-            marker=dict(size=6)
-        ))
-        fig_wk.add_trace(go.Scatter(
-            x=d2_full['Season_Week'], y=d2_full['Qta_Venduta'],
-            mode='lines+markers', name=f'{stag} {_comp_sy}',
-            line=dict(color=color, width=2, dash='dash'),
+            x=d_full['Season_Week'], y=d_full['Qta_Venduta'],
+            mode='lines+markers', name=f'{stag} {yr}',
+            line=dict(color=color, width=2, dash=dash),
             marker=dict(size=6)
         ))
 
