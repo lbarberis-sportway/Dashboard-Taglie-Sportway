@@ -111,22 +111,16 @@ def filter_by_date(df, year=None, quarter=None, month=None, day=None):
         df_filtered = df_filtered[df_filtered['Data'].dt.day == day]
     return df_filtered
 
-def get_filter_options(df_vend, df_acq):
-    """Estrae le opzioni uniche per i filtri."""
-    # Uniamo le opzioni di acquisti e vendite per avere una lista completa
-    options = {}
-    cols = ['Linea', 'Categoria', 'Stagione', 'Taglia', 'Produttore', 'Negozio']
-    
-    for col in cols:
-        v_opts = set(df_vend[col].dropna().unique()) if col in df_vend.columns else set()
-        a_opts = set(df_acq[col].dropna().unique()) if col in df_acq.columns else set()
-        combined = list(v_opts.union(a_opts))
-        if col == 'Taglia':
-            options[col] = sort_sizes(combined)
-        else:
-            options[col] = sorted(combined)
-        
-    return options
+def get_filtered_options(df_vend, df_acq, column, filters):
+    """Estrae le opzioni uniche per una colonna applicando i filtri correnti (cascading)."""
+    vend_f = filter_dataframe(df_vend, filters)
+    acq_f = filter_dataframe(df_acq, filters)
+    v_opts = set(vend_f[column].dropna().unique()) if column in vend_f.columns else set()
+    a_opts = set(acq_f[column].dropna().unique()) if column in acq_f.columns else set()
+    combined = list(v_opts.union(a_opts))
+    if column == 'Taglia':
+        return sort_sizes(combined)
+    return sorted(combined)
 
 def filter_dataframe(df, filters):
     """Applica i filtri al dataframe."""

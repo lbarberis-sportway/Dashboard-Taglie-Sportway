@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from pathlib import Path
-from data_engine import load_data, get_filter_options, filter_dataframe, merge_and_aggregate, get_date_reference, get_date_options, filter_by_date, merge_period_comparison, list_excel_files
+from data_engine import load_data, get_filtered_options, filter_dataframe, merge_and_aggregate, get_date_reference, get_date_options, filter_by_date, merge_period_comparison, list_excel_files
 
 st.set_page_config(page_title="Analisi Taglie | Dashboard", page_icon="logo.png", layout="wide", initial_sidebar_state="collapsed")
 
@@ -69,8 +69,6 @@ if st.session_state.df_vend_raw is None:
 df_vend_raw = st.session_state.df_vend_raw
 df_acq_raw = st.session_state.df_acq_raw
 
-filter_opts = get_filter_options(df_vend_raw, df_acq_raw)
-
 # ==========================================
 # LAYOUT PRINCIPALE (Bento-Grid)
 # ==========================================
@@ -88,23 +86,46 @@ with col_new:
         st.session_state.file_name = None
         st.rerun()
 
-# 3. Filtri Fissi Superiori
+# 3. Filtri Fissi Superiori (Cascading bidirezionale)
 st.markdown("### Filtri Ricerca")
+_FILTRI_COLS = ['Linea', 'Categoria', 'Stagione', 'Taglia', 'Produttore', 'Negozio']
+
+def _other_filters(exclude_col):
+    filters = {}
+    for col in _FILTRI_COLS:
+        if col != exclude_col:
+            val = st.session_state.get(f"filter_{col.lower()}", [])
+            if val:
+                filters[col] = val
+    return filters
+
 f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns(5)
 with f_col1:
-    selected_linee = st.multiselect("Linea", filter_opts.get('Linea', []), placeholder="Tutte le Linee", key="filter_linea")
+    selected_linee = st.multiselect("Linea",
+        get_filtered_options(df_vend_raw, df_acq_raw, 'Linea', _other_filters('Linea')),
+        placeholder="Tutte le Linee", key="filter_linea")
 with f_col2:
-    selected_cat = st.multiselect("Categoria", filter_opts.get('Categoria', []), placeholder="Tutte le Categorie", key="filter_categoria")
+    selected_cat = st.multiselect("Categoria",
+        get_filtered_options(df_vend_raw, df_acq_raw, 'Categoria', _other_filters('Categoria')),
+        placeholder="Tutte le Categorie", key="filter_categoria")
 with f_col3:
-    selected_stag = st.multiselect("Stagione", filter_opts.get('Stagione', []), placeholder="Tutte le Stagioni", key="filter_stagione")
+    selected_stag = st.multiselect("Stagione",
+        get_filtered_options(df_vend_raw, df_acq_raw, 'Stagione', _other_filters('Stagione')),
+        placeholder="Tutte le Stagioni", key="filter_stagione")
 with f_col4:
-    selected_taglie = st.multiselect("Taglia", filter_opts.get('Taglia', []), placeholder="Tutte le Taglie", key="filter_taglia")
+    selected_taglie = st.multiselect("Taglia",
+        get_filtered_options(df_vend_raw, df_acq_raw, 'Taglia', _other_filters('Taglia')),
+        placeholder="Tutte le Taglie", key="filter_taglia")
 with f_col5:
-    selected_prod = st.multiselect("Produttore", filter_opts.get('Produttore', []), placeholder="Tutti i Produttori", key="filter_produttore")
+    selected_prod = st.multiselect("Produttore",
+        get_filtered_options(df_vend_raw, df_acq_raw, 'Produttore', _other_filters('Produttore')),
+        placeholder="Tutti i Produttori", key="filter_produttore")
 
 f_col6, f_col7, f_col8 = st.columns(3)
 with f_col6:
-    selected_negozio = st.multiselect("Negozio", filter_opts.get('Negozio', []), placeholder="Tutti i Negozi", key="filter_negozio")
+    selected_negozio = st.multiselect("Negozio",
+        get_filtered_options(df_vend_raw, df_acq_raw, 'Negozio', _other_filters('Negozio')),
+        placeholder="Tutti i Negozi", key="filter_negozio")
 
 st.markdown("<hr style='margin-top: 0; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
 
