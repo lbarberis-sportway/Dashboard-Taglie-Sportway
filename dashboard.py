@@ -446,64 +446,63 @@ with tab1:
         height=400
     )
 
-# ===================== TAB 2: CONFRONTO YTD =====================
+# ===================== TAB 2: CONFRONTO STAGIONALE =====================
 with tab2:
-    max_data = date_ref['Data'].max()
-    anni_disponibili = sorted(date_ref['Data'].dt.year.unique(), reverse=True)
     mesi_nomi_cap = {1:"Gen",2:"Feb",3:"Mar",4:"Apr",5:"Mag",6:"Giu",
                      7:"Lug",8:"Ago",9:"Set",10:"Ott",11:"Nov",12:"Dic"}
 
-    st.markdown("### Confronto Anno su Anno")
+    stagioni_disponibili = sorted(df_vend_cat['Stagione'].unique())
+
+    st.markdown("### Confronto Stagionale")
     ytd_col1, ytd_col2, ytd_col3 = st.columns([1, 1, 1])
 
     with ytd_col1:
-        ref_year = st.selectbox("Anno Riferimento", anni_disponibili,
-                                index=0, key="ytd_ref_year")
+        ref_season = st.selectbox("Stagione Riferimento", stagioni_disponibili,
+                                  index=0, key="ytd_ref_season")
     with ytd_col2:
-        comp_opts = [a for a in anni_disponibili if a != ref_year]
-        comp_year = st.selectbox("Anno Confronto", comp_opts,
-                                 index=0 if comp_opts else 0,
-                                 key="ytd_comp_year")
+        comp_opts = [s for s in stagioni_disponibili if s != ref_season]
+        comp_season = st.selectbox("Stagione Confronto", comp_opts,
+                                   index=0 if comp_opts else 0,
+                                   key="ytd_comp_season")
     with ytd_col3:
-        sel_date = st.date_input("Data Fine Confronto", value=max_data.date(),
-                                 min_value=pd.Timestamp(ref_year, 1, 1).date(),
-                                 max_value=max_data.date(),
+        ref_season_data = df_vend_cat[df_vend_cat['Stagione'] == ref_season]
+        ref_min = ref_season_data['Data'].min()
+        ref_max = ref_season_data['Data'].max()
+        sel_date = st.date_input("Data Fine Confronto", value=ref_max.date(),
+                                 min_value=ref_min.date(),
+                                 max_value=ref_max.date(),
                                  format="DD/MM/YYYY",
                                  key="ytd_end_date")
 
-    # Trova data corrispondente nel comparison year (stessa settimana ISO, stesso giorno)
     sel_ts = pd.Timestamp(sel_date)
-    _iso_w, _iso_d = sel_ts.isocalendar()[1], sel_ts.isocalendar()[2]
-    try:
-        comp_corr = pd.Timestamp.fromisocalendar(comp_year, _iso_w, _iso_d)
-    except ValueError:
-        comp_corr = pd.Timestamp(comp_year, 12, 31)
-        # Retrocede fino al giorno della settimana corrispondente
-        off = (_iso_d - comp_corr.dayofweek()) % 7
-        comp_corr -= pd.Timedelta(days=off)
-
-    ref_start = pd.Timestamp(ref_year, 1, 1)
+    ref_season_data = df_vend_cat[df_vend_cat['Stagione'] == ref_season]
+    comp_season_data = df_vend_cat[df_vend_cat['Stagione'] == comp_season]
+    ref_min = ref_season_data['Data'].min()
     ref_end = sel_ts
-    _j1_w, _j1_d = ref_start.isocalendar()[1], ref_start.isocalendar()[2]
+    comp_year_int = 2000 + int(comp_season[-2:])
+    comp_season_max = comp_season_data['Data'].max()
     try:
-        comp_start = pd.Timestamp.fromisocalendar(comp_year, _j1_w, _j1_d)
+        comp_end = pd.Timestamp(comp_year_int, sel_ts.month, sel_ts.day)
     except ValueError:
-        comp_start = pd.Timestamp(comp_year, 1, 1)
-    comp_end = comp_corr
+        import calendar
+        last_day = calendar.monthrange(comp_year_int, sel_ts.month)[1]
+        comp_end = pd.Timestamp(comp_year_int, sel_ts.month, min(sel_ts.day, last_day))
+    comp_end = min(comp_end, comp_season_max)
+    comp_min = comp_season_data['Data'].min()
 
     def _fmt_period(s, e):
         return f"{s.day:02d} {mesi_nomi_cap[s.month]} {s.year} → {e.day:02d} {mesi_nomi_cap[e.month]} {e.year}"
 
     st.caption(
-        f"**{ref_year}**: {_fmt_period(ref_start, ref_end)} | "
-        f"**{comp_year}**: {_fmt_period(comp_start, comp_end)}"
+        f"**{ref_season}**: {_fmt_period(ref_min, ref_end)} | "
+        f"**{comp_season}**: {_fmt_period(comp_min, comp_end)}"
     )
     st.markdown("<br>", unsafe_allow_html=True)
 
-    vend_p1 = df_vend_cat[(df_vend_cat['Data'] >= ref_start) & (df_vend_cat['Data'] <= ref_end)]
-    acq_p1 = df_acq_cat[df_acq_cat['Data'] <= ref_end]
-    vend_p2 = df_vend_cat[(df_vend_cat['Data'] >= comp_start) & (df_vend_cat['Data'] <= comp_end)]
-    acq_p2 = df_acq_cat[df_acq_cat['Data'] <= comp_end]
+    vend_p1 = df_vend_cat[(df_vend_cat['Stagione'] == ref_season) & (df_vend_cat['Data'] <= ref_end)]
+    acq_p1 = df_acq_cat[(df_acq_cat['Stagione'] == ref_season) & (df_acq_cat['Data'] <= ref_end)]
+    vend_p2 = df_vend_cat[(df_vend_cat['Stagione'] == comp_season) & (df_vend_cat['Data'] <= comp_end)]
+    acq_p2 = df_acq_cat[(df_acq_cat['Stagione'] == comp_season) & (df_acq_cat['Data'] <= comp_end)]
 
     tot_acq_p1 = int(acq_p1['Qta_Acquistata'].sum())
     tot_vend_p1 = int(vend_p1['Qta_Venduta'].sum())
@@ -561,9 +560,9 @@ with tab2:
         st.subheader("Confronto Acquisti per Taglia")
         fig_acq_comp = go.Figure()
         fig_acq_comp.add_trace(go.Bar(x=comp_taglie['Taglia'], y=comp_taglie['P1_Acq'],
-                                       name=f'Acq {ref_year}', marker_color=COLOR_ACQ))
+                                       name=f'Acq {ref_season}', marker_color=COLOR_ACQ))
         fig_acq_comp.add_trace(go.Bar(x=comp_taglie['Taglia'], y=comp_taglie['P2_Acq'],
-                                       name=f'Acq {comp_year}', marker_color=COLOR_ACQ_LIGHT))
+                                       name=f'Acq {comp_season}', marker_color=COLOR_ACQ_LIGHT))
         fig_acq_comp.update_layout(barmode='group', plot_bgcolor='rgba(0,0,0,0)',
                                     paper_bgcolor='rgba(0,0,0,0)',
                                     margin=dict(l=20, r=20, t=40, b=20),
@@ -577,9 +576,9 @@ with tab2:
         st.subheader("Confronto Vendite per Taglia")
         fig_vend_comp = go.Figure()
         fig_vend_comp.add_trace(go.Bar(x=comp_taglie['Taglia'], y=comp_taglie['P1_Vend'],
-                                        name=f'Vend {ref_year}', marker_color=COLOR_VEND))
+                                        name=f'Vend {ref_season}', marker_color=COLOR_VEND))
         fig_vend_comp.add_trace(go.Bar(x=comp_taglie['Taglia'], y=comp_taglie['P2_Vend'],
-                                        name=f'Vend {comp_year}', marker_color=COLOR_VEND_LIGHT))
+                                        name=f'Vend {comp_season}', marker_color=COLOR_VEND_LIGHT))
         fig_vend_comp.update_layout(barmode='group', plot_bgcolor='rgba(0,0,0,0)',
                                      paper_bgcolor='rgba(0,0,0,0)',
                                      margin=dict(l=20, r=20, t=40, b=20),
@@ -592,13 +591,13 @@ with tab2:
     st.subheader("Confronto per Categoria")
     fig_cat_comp = go.Figure()
     fig_cat_comp.add_trace(go.Bar(x=comp_cat['Categoria'], y=comp_cat['P1_Acq'],
-                                   name=f'Acq {ref_year}', marker_color=COLOR_ACQ))
+                                   name=f'Acq {ref_season}', marker_color=COLOR_ACQ))
     fig_cat_comp.add_trace(go.Bar(x=comp_cat['Categoria'], y=comp_cat['P2_Acq'],
-                                   name=f'Acq {comp_year}', marker_color=COLOR_ACQ_LIGHT))
+                                   name=f'Acq {comp_season}', marker_color=COLOR_ACQ_LIGHT))
     fig_cat_comp.add_trace(go.Bar(x=comp_cat['Categoria'], y=comp_cat['P1_Vend'],
-                                   name=f'Vend {ref_year}', marker_color=COLOR_VEND))
+                                   name=f'Vend {ref_season}', marker_color=COLOR_VEND))
     fig_cat_comp.add_trace(go.Bar(x=comp_cat['Categoria'], y=comp_cat['P2_Vend'],
-                                   name=f'Vend {comp_year}', marker_color=COLOR_VEND_LIGHT))
+                                   name=f'Vend {comp_season}', marker_color=COLOR_VEND_LIGHT))
     fig_cat_comp.update_layout(barmode='group', plot_bgcolor='rgba(0,0,0,0)',
                                 paper_bgcolor='rgba(0,0,0,0)',
                                 margin=dict(l=20, r=20, t=40, b=20),
@@ -608,39 +607,45 @@ with tab2:
     fig_cat_comp.update_xaxes(type='category')
     st.plotly_chart(fig_cat_comp, use_container_width=True)
 
-    end_week = sel_ts.isocalendar()[1]
     color_palette = ['#3b82f6','#f59e0b','#10b981','#ef4444','#8b5cf6',
                      '#ec4899','#06b6d4','#f97316','#6366f1','#14b8a6']
 
     weekly_p1 = vend_p1.copy()
-    weekly_p1['ISO_Week'] = weekly_p1['Data'].dt.isocalendar()['week']
-    weekly_p2 = vend_p2.copy()
-    weekly_p2['ISO_Week'] = weekly_p2['Data'].dt.isocalendar()['week']
+    p1_min = vend_p1['Data'].min()
+    weekly_p1['Season_Week'] = ((weekly_p1['Data'] - p1_min).dt.days // 7) + 1
 
-    wk_agg_p1 = weekly_p1.groupby(['Stagione', 'ISO_Week'])['Qta_Venduta'].sum().reset_index()
-    wk_agg_p2 = weekly_p2.groupby(['Stagione', 'ISO_Week'])['Qta_Venduta'].sum().reset_index()
+    weekly_p2 = vend_p2.copy()
+    p2_min = vend_p2['Data'].min()
+    weekly_p2['Season_Week'] = ((weekly_p2['Data'] - p2_min).dt.days // 7) + 1
+
+    wk_agg_p1 = weekly_p1.groupby(['Stagione', 'Season_Week'])['Qta_Venduta'].sum().reset_index()
+    wk_agg_p2 = weekly_p2.groupby(['Stagione', 'Season_Week'])['Qta_Venduta'].sum().reset_index()
 
     st.subheader("Vendite Settimanali per Stagione")
     fig_wk = go.Figure()
-    wk_range = list(range(1, end_week + 1))
+    max_sw = max(wk_agg_p1['Season_Week'].max(), wk_agg_p2['Season_Week'].max())
+    wk_range = list(range(1, int(max_sw) + 1))
     tutte_stag = sorted(set(wk_agg_p1['Stagione'].unique()) | set(wk_agg_p2['Stagione'].unique()))
+
+    _ref_sy = 2000 + int(ref_season[-2:])
+    _comp_sy = 2000 + int(comp_season[-2:])
 
     for i, stag in enumerate(tutte_stag):
         color = color_palette[i % len(color_palette)]
         d1 = wk_agg_p1[wk_agg_p1['Stagione'] == stag]
         d2 = wk_agg_p2[wk_agg_p2['Stagione'] == stag]
-        d1_full = d1.set_index('ISO_Week')[['Qta_Venduta']].reindex(wk_range, fill_value=0).reset_index()
-        d2_full = d2.set_index('ISO_Week')[['Qta_Venduta']].reindex(wk_range, fill_value=0).reset_index()
+        d1_full = d1.set_index('Season_Week')[['Qta_Venduta']].reindex(wk_range, fill_value=0).reset_index()
+        d2_full = d2.set_index('Season_Week')[['Qta_Venduta']].reindex(wk_range, fill_value=0).reset_index()
 
         fig_wk.add_trace(go.Scatter(
-            x=d1_full['ISO_Week'], y=d1_full['Qta_Venduta'],
-            mode='lines+markers', name=f'{stag} {ref_year}',
+            x=d1_full['Season_Week'], y=d1_full['Qta_Venduta'],
+            mode='lines+markers', name=f'{stag} {_ref_sy}',
             line=dict(color=color, width=2, dash='solid'),
             marker=dict(size=6)
         ))
         fig_wk.add_trace(go.Scatter(
-            x=d2_full['ISO_Week'], y=d2_full['Qta_Venduta'],
-            mode='lines+markers', name=f'{stag} {comp_year}',
+            x=d2_full['Season_Week'], y=d2_full['Qta_Venduta'],
+            mode='lines+markers', name=f'{stag} {_comp_sy}',
             line=dict(color=color, width=2, dash='dash'),
             marker=dict(size=6)
         ))
@@ -651,7 +656,7 @@ with tab2:
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         font=dict(family="Inter, sans-serif", color="#475569"),
         yaxis_title='Quantità Venduta',
-        xaxis_title='Settimana ISO',
+        xaxis_title='Settimana Stagione',
         hovermode='x unified'
     )
     fig_wk.update_yaxes(gridcolor='#f1f5f9')
@@ -664,36 +669,36 @@ with tab2:
 
         display = df.rename(columns={
             group_col: title,
-            'P1_Acq': f'Acq {ref_year}',
-            'P1_Vend': f'Vend {ref_year}',
-            'P1_ST%': f'ST% {ref_year}',
-            'P2_Acq': f'Acq {comp_year}',
-            'P2_Vend': f'Vend {comp_year}',
-            'P2_ST%': f'ST% {comp_year}',
+            'P1_Acq': f'Acq {ref_season}',
+            'P1_Vend': f'Vend {ref_season}',
+            'P1_ST%': f'ST% {ref_season}',
+            'P2_Acq': f'Acq {comp_season}',
+            'P2_Vend': f'Vend {comp_season}',
+            'P2_ST%': f'ST% {comp_season}',
             'Delta_Acq': 'Δ Acq',
             'Delta_Vend': 'Δ Vend',
             'Delta_ST': 'Δ ST%'
         })
 
         st_cols = [title,
-                   f'Acq {ref_year}', f'Vend {ref_year}', f'ST% {ref_year}',
-                   f'Acq {comp_year}', f'Vend {comp_year}', f'ST% {comp_year}',
+                   f'Acq {ref_season}', f'Vend {ref_season}', f'ST% {ref_season}',
+                   f'Acq {comp_season}', f'Vend {comp_season}', f'ST% {comp_season}',
                    'Δ Acq', 'Δ Vend', 'Δ ST%']
 
         display = display[[c for c in st_cols if c in display.columns]]
 
         styled = (
             display.style
-            .map(_c_str, subset=[f'ST% {ref_year}', f'ST% {comp_year}'])
+            .map(_c_str, subset=[f'ST% {ref_season}', f'ST% {comp_season}'])
             .map(_c_str_delta, subset=['Δ Acq', 'Δ Vend'])
             .map(_c_str_delta, subset=['Δ ST%'])
             .format({
-                f'Acq {ref_year}': '{:.0f}',
-                f'Vend {ref_year}': '{:.0f}',
-                f'ST% {ref_year}': '{:.1f}%',
-                f'Acq {comp_year}': '{:.0f}',
-                f'Vend {comp_year}': '{:.0f}',
-                f'ST% {comp_year}': '{:.1f}%',
+                f'Acq {ref_season}': '{:.0f}',
+                f'Vend {ref_season}': '{:.0f}',
+                f'ST% {ref_season}': '{:.1f}%',
+                f'Acq {comp_season}': '{:.0f}',
+                f'Vend {comp_season}': '{:.0f}',
+                f'ST% {comp_season}': '{:.1f}%',
                 'Δ Acq': _fmt_delta,
                 'Δ Vend': _fmt_delta,
                 'Δ ST%': _fmt_delta_pct,
