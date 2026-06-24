@@ -24,10 +24,6 @@ def reset_filters():
     st.session_state.filter_taglia = []
     st.session_state.filter_produttore = []
     st.session_state.filter_negozio = []
-    st.session_state.year_filter = "Tutti"
-    st.session_state.quarter_filter = "Tutti"
-    st.session_state.month_filter = "Tutti"
-    st.session_state.day_filter = "Tutti"
 
 if st.session_state.df_vend_raw is None:
     st.title("Sportway Analisi Dati")
@@ -128,49 +124,24 @@ df_acq = filter_dataframe(df_acq_raw, filters)
 df_vend_cat = df_vend.copy()
 df_acq_cat = df_acq.copy()
 
-# 4.5 Filtri Temporali
-st.markdown("### Filtri Temporali")
+# 4.5 Init filtri temporali
 date_ref = get_date_reference(df_vend_raw, df_acq_raw)
-min_d = date_ref['Data'].min().strftime('%d/%m/%Y')
-max_d = date_ref['Data'].max().strftime('%d/%m/%Y')
-st.caption(f"Periodo disponibile: {min_d} → {max_d}")
+_ref_min = date_ref['Data'].min().date()
+_ref_max = date_ref['Data'].max().date()
 
-d_col1, d_col2, d_col3, d_col4 = st.columns(4)
+if 'range_slider' not in st.session_state:
+    st.session_state.range_slider = (_ref_min, _ref_max)
+if 'temp_start' not in st.session_state:
+    st.session_state.temp_start = _ref_min
+if 'temp_end' not in st.session_state:
+    st.session_state.temp_end = _ref_max
 
-with d_col1:
-    years, _, _, _ = get_date_options(date_ref)
-    year_opts = ["Tutti"] + [str(int(y)) for y in years]
-    sel_year = st.selectbox("Anno", year_opts, key="year_filter")
+def _sync_slider_dates():
+    st.session_state.temp_start = st.session_state.range_slider[0]
+    st.session_state.temp_end = st.session_state.range_slider[1]
 
-year_val = int(sel_year) if sel_year != "Tutti" else None
-
-with d_col2:
-    _, q_avail, _, _ = get_date_options(date_ref, year=year_val)
-    q_opts = ["Tutti"] + [f"Q{int(q)}" for q in q_avail]
-    sel_quarter = st.selectbox("Trimestre", q_opts, key="quarter_filter")
-
-quarter_val = int(sel_quarter[1]) if sel_quarter != "Tutti" else None
-
-with d_col3:
-    _, _, m_avail, _ = get_date_options(date_ref, year=year_val, quarter=quarter_val)
-    mesi = {1:"Gen",2:"Feb",3:"Mar",4:"Apr",5:"Mag",6:"Giu",
-            7:"Lug",8:"Ago",9:"Set",10:"Ott",11:"Nov",12:"Dic"}
-    m_opts = ["Tutti"] + [f"{int(m)} - {mesi[m]}" for m in m_avail]
-    sel_month = st.selectbox("Mese", m_opts, key="month_filter")
-
-month_val = int(sel_month.split(" - ")[0]) if sel_month != "Tutti" else None
-
-with d_col4:
-    _, _, _, d_avail = get_date_options(date_ref, year=year_val, quarter=quarter_val, month=month_val)
-    d_opts = ["Tutti"] + [str(int(d)) for d in d_avail]
-    sel_day = st.selectbox("Giorno", d_opts, key="day_filter")
-
-day_val = int(sel_day) if sel_day != "Tutti" else None
-
-df_vend = filter_by_date(df_vend, year=year_val, quarter=quarter_val, month=month_val, day=day_val)
-df_acq = filter_by_date(df_acq, year=year_val, quarter=quarter_val, month=month_val, day=day_val)
-
-st.markdown("<hr style='margin-top: 0; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
+def _sync_dates_slider():
+    st.session_state.range_slider = (st.session_state.temp_start, st.session_state.temp_end)
 
 COLOR_ACQ = "#3b82f6"
 COLOR_VEND = "#f59e0b"
@@ -207,10 +178,29 @@ def _fmt_delta_pct(val):
         return f'+{val:.1f}%'
     return f'{val:.1f}%'
 
-tab1, tab2 = st.tabs(["📊 Analisi Completa", "📈 Confronto YTD"])
+tab1, tab2 = st.tabs(["📊 Analisi Completa", "📈 Confronto Stagionale"])
 
 # ===================== TAB 1: ANALISI COMPLETA =====================
 with tab1:
+    st.markdown("### Filtri Temporali")
+    st.caption(f"Periodo disponibile: {_ref_min.strftime('%d/%m/%Y')} → {_ref_max.strftime('%d/%m/%Y')}")
+
+    st.slider("Intervallo Date", min_value=_ref_min, max_value=_ref_max,
+              format="DD/MM/YYYY", key="range_slider", on_change=_sync_slider_dates)
+
+    d_col1, d_col2 = st.columns(2)
+    with d_col1:
+        st.date_input("Data Inizio", key="temp_start", format="DD/MM/YYYY", on_change=_sync_dates_slider)
+    with d_col2:
+        st.date_input("Data Fine", key="temp_end", format="DD/MM/YYYY", on_change=_sync_dates_slider)
+
+    df_vend = df_vend[(df_vend['Data'] >= pd.Timestamp(st.session_state.temp_start)) &
+                      (df_vend['Data'] <= pd.Timestamp(st.session_state.temp_end))]
+    df_acq = df_acq[(df_acq['Data'] >= pd.Timestamp(st.session_state.temp_start)) &
+                    (df_acq['Data'] <= pd.Timestamp(st.session_state.temp_end))]
+
+    st.markdown("<hr style='margin-top: 0; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
+
     df_stag, df_tot = merge_and_aggregate(df_vend, df_acq)
 
     col1, col2, col3, col4 = st.columns(4)
