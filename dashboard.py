@@ -600,13 +600,11 @@ with tab2:
     color_palette = ['#3b82f6','#f59e0b','#10b981','#ef4444','#8b5cf6',
                      '#ec4899','#06b6d4','#f97316','#6366f1','#14b8a6']
 
-    weekly_p1 = vend_p1.copy()
-    p1_min = vend_p1['Data'].min()
-    weekly_p1['Season_Week'] = ((weekly_p1['Data'] - p1_min).dt.days // 7) + 1
+    weekly_p1 = df_vend_cat[df_vend_cat['Stagione'] == ref_season].copy()
+    weekly_p1['Season_Week'] = weekly_p1['Data'].dt.isocalendar().week.astype(int)
 
-    weekly_p2 = vend_p2.copy()
-    p2_min = vend_p2['Data'].min()
-    weekly_p2['Season_Week'] = ((weekly_p2['Data'] - p2_min).dt.days // 7) + 1
+    weekly_p2 = df_vend_cat[df_vend_cat['Stagione'] == comp_season].copy()
+    weekly_p2['Season_Week'] = weekly_p2['Data'].dt.isocalendar().week.astype(int)
 
     wk_agg_p1 = weekly_p1.groupby(['Stagione', 'Season_Week'])['Qta_Venduta'].sum().reset_index()
     wk_agg_p2 = weekly_p2.groupby(['Stagione', 'Season_Week'])['Qta_Venduta'].sum().reset_index()
@@ -646,7 +644,7 @@ with tab2:
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         font=dict(family="Inter, sans-serif", color="#475569"),
         yaxis_title='Quantità Venduta',
-        xaxis_title='Settimana Stagione',
+        xaxis_title='Settimana Anno Solare (ISO)',
         hovermode='x unified'
     )
     fig_wk.update_yaxes(gridcolor='#f1f5f9')
