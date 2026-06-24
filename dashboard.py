@@ -629,8 +629,8 @@ with tab2:
         color = color_palette[i % len(color_palette)]
         d1 = wk_agg_p1[wk_agg_p1['Stagione'] == stag]
         d2 = wk_agg_p2[wk_agg_p2['Stagione'] == stag]
-        d1_full = d1.set_index('ISO_Week').reindex(wk_range, fill_value=0).reset_index()
-        d2_full = d2.set_index('ISO_Week').reindex(wk_range, fill_value=0).reset_index()
+        d1_full = d1.set_index('ISO_Week')[['Qta_Venduta']].reindex(wk_range, fill_value=0).reset_index()
+        d2_full = d2.set_index('ISO_Week')[['Qta_Venduta']].reindex(wk_range, fill_value=0).reset_index()
 
         fig_wk.add_trace(go.Scatter(
             x=d1_full['ISO_Week'], y=d1_full['Qta_Venduta'],
