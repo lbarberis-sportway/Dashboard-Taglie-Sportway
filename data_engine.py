@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import streamlit as st
 
 DEFAULT_FILE_PATH = "Dati Excel/Analisi Fitness Adidas Taglie.xlsx"
 
@@ -29,6 +30,7 @@ def _taglia_cat_dtype(taglie_values=None):
         return pd.CategoricalDtype(categories=categories, ordered=True)
     return pd.CategoricalDtype(categories=SIZE_ORDER, ordered=True)
 
+@st.cache_data(ttl=600)
 def load_data(file_source=None):
     """Carica i dati dai due fogli Excel e standardizza i nomi delle colonne."""
     if file_source is None:
@@ -148,6 +150,7 @@ def filter_by_iso_week_range(df, iso_year, end_week):
     df_filtered = df_filtered[(iso['year'] == iso_year) & (iso['week'] <= end_week)]
     return df_filtered
 
+@st.cache_data(ttl=60)
 def merge_period_comparison(df_vend_p1, df_acq_p1, df_vend_p2, df_acq_p2, group_col='Taglia'):
     """Aggrega due periodi in un unico dataframe di confronto con delta."""
     all_vals = set()
@@ -203,6 +206,7 @@ def merge_period_comparison(df_vend_p1, df_acq_p1, df_vend_p2, df_acq_p2, group_
 
     return merged.reset_index(drop=True)
 
+@st.cache_data(ttl=60)
 def merge_and_aggregate(df_vend, df_acq):
     """Aggrega per Taglia e Stagione, e calcola il Sell-Through Rate."""
     all_taglie = set()

@@ -1,13 +1,15 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
+from pathlib import Path
 from data_engine import load_data, get_filter_options, filter_dataframe, merge_and_aggregate, get_date_reference, get_date_options, filter_by_date, merge_period_comparison, list_excel_files
 
 st.set_page_config(page_title="Analisi Taglie | Dashboard", page_icon="logo.png", layout="wide", initial_sidebar_state="collapsed")
 
-with open("style.css", "r") as f:
-    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+_css_path = Path(__file__).parent / "style.css"
+if _css_path.exists():
+    with open(_css_path, "r") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 # --- CARICAMENTO FILE (Upload o Stato) ---
 if 'df_vend_raw' not in st.session_state:
