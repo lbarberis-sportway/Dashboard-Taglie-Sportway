@@ -35,7 +35,7 @@ if st.session_state.df_vend_raw is None:
         st.markdown("**File dalla cartella Dati Excel**")
         files_disponibili = list_excel_files()
         if files_disponibili:
-            sel_file = st.selectbox("", files_disponibili, label_visibility="collapsed", key="file_select")
+            sel_file = st.selectbox("Seleziona file", files_disponibili, label_visibility="collapsed", key="file_select")
             if st.button("Analizza file selezionato", type="primary", use_container_width=True):
                 try:
                     df_vend_raw, df_acq_raw = load_data(f"Dati Excel/{sel_file}")
@@ -51,7 +51,7 @@ if st.session_state.df_vend_raw is None:
 
     with col_up2:
         st.markdown("**Oppure carica un file dal computer**")
-        uploaded_file = st.file_uploader("", type=['xlsx'], label_visibility="collapsed")
+        uploaded_file = st.file_uploader("Carica file", type=['xlsx'], label_visibility="collapsed")
 
         if uploaded_file is not None:
             try:
