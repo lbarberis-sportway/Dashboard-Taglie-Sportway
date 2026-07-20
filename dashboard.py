@@ -1,8 +1,16 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import io
 from pathlib import Path
 from data_engine import load_data, get_filtered_options, filter_dataframe, merge_and_aggregate, get_date_reference, get_date_options, filter_by_date, merge_period_comparison, list_excel_files
+
+def to_excel(df):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False)
+    return output.getvalue()
+
 
 st.set_page_config(page_title="Analisi Taglie | Dashboard", page_icon="logo.png", layout="wide", initial_sidebar_state="collapsed")
 
@@ -360,6 +368,13 @@ with tab1:
         use_container_width=True,
         height=400
     )
+    st.download_button(
+        label="Esporta Matrice Taglie in Excel",
+        data=to_excel(display_df),
+        file_name="matrice_taglie.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        key="btn_export_taglie"
+    )
 
     st.markdown("<hr style='margin-top: 2rem; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
     st.subheader("Matrice Produttori")
@@ -391,6 +406,13 @@ with tab1:
         prod_styled,
         use_container_width=True,
         height=400
+    )
+    st.download_button(
+        label="Esporta Matrice Produttori in Excel",
+        data=to_excel(prod_display),
+        file_name="matrice_produttori.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        key="btn_export_produttori"
     )
 
     st.markdown("<hr style='margin-top: 2rem; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
@@ -424,6 +446,13 @@ with tab1:
         use_container_width=True,
         height=400
     )
+    st.download_button(
+        label="Esporta Matrice Categoria in Excel",
+        data=to_excel(cat_display),
+        file_name="matrice_categoria.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        key="btn_export_categoria"
+    )
 
     st.markdown("<hr style='margin-top: 2rem; margin-bottom: 2rem; border-color: #e2e8f0;'>", unsafe_allow_html=True)
     st.subheader("Matrice Linea")
@@ -455,6 +484,13 @@ with tab1:
         linea_styled,
         use_container_width=True,
         height=400
+    )
+    st.download_button(
+        label="Esporta Matrice Linea in Excel",
+        data=to_excel(linea_display),
+        file_name="matrice_linea.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        key="btn_export_linea"
     )
 
 # ===================== TAB 2: CONFRONTO STAGIONALE =====================
@@ -719,6 +755,13 @@ with tab2:
         )
 
         st.dataframe(styled, use_container_width=True, height=400)
+        st.download_button(
+            label=f"Esporta Confronto {title} in Excel",
+            data=to_excel(display),
+            file_name=f"confronto_{title.lower()}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key=f"download_comp_{group_col.lower()}"
+        )
 
     _show_comp_matrix(comp_taglie, 'Taglia', 'Taglie')
     _show_comp_matrix(merge_period_comparison(vend_p1, acq_p1, vend_p2, acq_p2, 'Produttore'), 'Produttore', 'Produttori')
